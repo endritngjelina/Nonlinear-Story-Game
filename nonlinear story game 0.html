@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryGraph Pro - Nonlinear Story Editor</title>
+    <style>
+        :root {
+            --primary: #1a1a1a;
+            --secondary: #2d2d2d;
+            --accent: #0066cc;
+            --accent-hover: #0052a3;
+            --success: #00cc66;
+            --warning: #ff9900;
+            --danger: #cc0000;
+            --text: #ffffff;
+            --text-secondary: #cccccc;
+            --border: #404040;
+            --bg-hover: #333333;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, #0a0a0a 100%);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #00aaff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: var(--text);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn.success {
+            background: var(--success);
+        }
+
+        .btn.warning {
+            background: var(--warning);
+        }
+
+        .btn.secondary {
+            background: var(--secondary);
+            border: 1px solid var(--border);
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .node-palette {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .node-template {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .node-template:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: 
+                radial-gradient(circle at 20px 20px, #333 1px, transparent 1px),
+                radial-gradient(circle at 20px 20px, #333 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+        }
+
+        .canvas {
+            width: 5000px;
+            height: 5000px;
+            position: relative;
+            transform-origin: 0 0;
+        }
+
+        .node {
+            position: absolute;
+            background: var(--secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            min-width: 200px;
+            max-width: 350px;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.2s ease;
+            cursor: move;
+        }
+
+        .node:hover {
+            border-color: var(--accent);
+            box-shadow: 0 8px 30px var(--shadow);
+        }
+
+        .node.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.3);
+        }
+
+        .node-header {
+            background: linear-gradient(135deg, var(--accent), #0052a3);
+            color: var(--text);
+            padding: 10px 15px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-content {
+            padding: 15px;
+        }
+
+        .node-input {
+            width: 100%;
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .node-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .connection-point {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .input-point {
+            background: var(--success);
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .output-point {
+            background: var(--warning);
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-point:hover {
+            transform: scale(1.3) translateY(-50%);
+        }
+
+        .connection {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: var(--accent);
+            stroke-width: 2;
+            fill: none;
+            filter: drop-shadow(0 2px 4px var(--shadow));
+        }
+
+        .choice-container {
+            margin-top: 10px;
+        }
+
+        .choice-item {
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .choice-text {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            padding: 8px 40px 8px 12px;
+            font-size: 14px;
+        }
+
+        .choice-output {
+            background: var(--warning);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: absolute;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+
+        .add-choice {
+            background: var(--success);
+            color: var(--text);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .node-delete {
+            background: var(--danger);
+            color: var(--text);
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .properties-panel {
+            width: 300px;
+            background: var(--secondary);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .property-input {
+            width: 100%;
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: var(--secondary);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow);
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .json-output {
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text);
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .stats-panel {
+            display: flex;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(45, 45, 45, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: var(--primary);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .preview-container {
+            background: var(--primary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .preview-node {
+            background: var(--secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .preview-choices {
+            margin-top: 10px;
+        }
+
+        .preview-choice {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preview-choice:hover {
+            border-color: var(--accent);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .node {
+            animation: fadeIn 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">StoryGraph Pro</div>
+        <div class="toolbar">
+            <button class="btn" onclick="storyEditor.newProject()">
+                <span>📄</span> New
+            </button>
+            <button class="btn secondary" onclick="storyEditor.importProject()">
+                <span>📥</span> Import
+            </button>
+            <button class="btn success" onclick="storyEditor.exportToJSON()">
+                <span>📤</span> Export JSON
+            </button>
+            <button class="btn warning" onclick="storyEditor.previewStory()">
+                <span>👁️</span> Preview
+            </button>
+            <button class="btn secondary" onclick="storyEditor.validateStory()">
+                <span>✅</span> Validate
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-header">Node Templates</div>
+            <div class="node-palette">
+                <div class="node-template" onclick="storyEditor.addNode('start')">
+                    <strong>🚀 Start Node</strong>
+                    <p>Entry point for your story</p>
+                </div>
+                <div class="node-template" onclick="storyEditor.addNode('dialogue')">
+                    <strong>💬 Dialogue Node</strong>
+                    <p>Character speech or narration</p>
+                </div>
+                <div class="node-template" onclick="storyEditor.addNode('choice')">
+                    <strong>🔀 Choice Node</strong>
+                    <p>Multiple path decision point</p>
+                </div>
+                <div class="node-template" onclick="storyEditor.addNode('condition')">
+                    <strong>❓ Condition Node</strong>
+                    <p>Conditional branching logic</p>
+                </div>
+                <div class="node-template" onclick="storyEditor.addNode('action')">
+                    <strong>⚡ Action Node</strong>
+                    <p>Game state modifications</p>
+                </div>
+                <div class="node-template" onclick="storyEditor.addNode('ending')">
+                    <strong>🏁 Ending Node</strong>
+                    <p>Story conclusion point</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <div class="canvas" id="canvas"></div>
+            <svg class="canvas" id="connections" style="position: absolute; top: 0; left: 0; pointer-events: none;">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="minimap" id="minimap"></div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="storyEditor.zoomIn()">+</button>
+                <button class="zoom-btn" onclick="storyEditor.zoomOut()">−</button>
+                <button class="zoom-btn" onclick="storyEditor.resetZoom()">⌂</button>
+            </div>
+        </div>
+
+        <div class="properties-panel">
+            <h3>Story Statistics</h3>
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <div class="stat-number" id="nodeCount">0</div>
+                    <div class="stat-label">Nodes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="connectionCount">0</div>
+                    <div class="stat-label">Connections</div>
+                </div>
+            </div>
+
+            <h3>Selected Node Properties</h3>
+            <div id="nodeProperties">
+                <p style="color: var(--text-secondary); font-style: italic;">Select a node to edit properties</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        class StoryEditor {
+            constructor() {
+                this.nodes = new Map();
+                this.connections = [];
+                this.selectedNode = null;
+                this.draggedNode = null;
+                this.connectingFrom = null;
+                this.nodeIdCounter = 0;
+                this.zoom = 1;
+                this.panX = 0;
+                this.panY = 0;
+                this.isDragging = false;
+                this.isConnecting = false;
+                
+                this.canvas = document.getElementById('canvas');
+                this.canvasContainer = document.getElementById('canvasContainer');
+                this.connectionsLayer = document.getElementById('connections');
+                
+                this.initializeEventListeners();
+                this.updateStats();
+                this.addStartNode();
+            }
+
+            initializeEventListeners() {
+                // Canvas panning
+                this.canvasContainer.addEventListener('mousedown', this.onCanvasMouseDown.bind(this));
+                document.addEventListener('mousemove', this.onMouseMove.bind(this));
+                document.addEventListener('mouseup', this.onMouseUp.bind(this));
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', this.onKeyDown.bind(this));
+                
+                // Prevent context menu
+                this.canvasContainer.addEventListener('contextmenu', e => e.preventDefault());
+            }
+
+            addStartNode() {
+                const startNode = this.createNode('start', 100, 100);
+                startNode.data.title = 'Story Beginning';
+                startNode.data.content = 'Welcome to your interactive story!';
+                this.updateNodeDisplay(startNode);
+            }
+
+            createNode(type, x, y) {
+                const nodeId = `node_${++this.nodeIdCounter}`;
+                const nodeData = {
+                    id: nodeId,
+                    type: type,
+                    x: x,
+                    y: y,
+                    title: `${type.charAt(0).toUpperCase() + type.slice(1)} Node`,
+                    content: '',
+                    choices: type === 'choice' ? [{ text: 'Option 1', target: null }] : [],
+                    condition: type === 'condition' ? '' : null,
+                    variables: type === 'action' ? {} : null
+                };
+
+                const nodeElement = this.createNodeElement(nodeData);
+                this.canvas.appendChild(nodeElement);
+                this.nodes.set(nodeId, { element: nodeElement, data: nodeData });
+                
+                this.updateStats();
+                return this.nodes.get(nodeId);
+            }
+
+            createNodeElement(nodeData) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.style.left = nodeData.x + 'px';
+                node.style.top = nodeData.y + 'px';
+                node.setAttribute('data-node-id', nodeData.id);
+
+                const header = document.createElement('div');
+                header.className = 'node-header';
+                header.innerHTML = `
+                    <span>${this.getNodeIcon(nodeData.type)} ${nodeData.title}</span>
+                    <button class="node-delete" onclick="storyEditor.deleteNode('${nodeData.id}')" title="Delete Node">×</button>
+                `;
+
+                const content = document.createElement('div');
+                content.className = 'node-content';
+
+                // Input point (except for start nodes)
+                if (nodeData.type !== 'start') {
+                    const inputPoint = document.createElement('div');
+                    inputPoint.className = 'connection-point input-point';
+                    inputPoint.onclick = (e) => this.onConnectionPointClick(e, nodeData.id, 'input');
+                    node.appendChild(inputPoint);
+                }
+
+                node.appendChild(header);
+                node.appendChild(content);
+
+                // Make node draggable
+                this.makeNodeDraggable(node);
+                
+                return node;
+            }
+
+            getNodeIcon(type) {
+                const icons = {
+                    start: '🚀',
+                    dialogue: '💬',
+                    choice: '🔀',
+                    condition: '❓',
+                    action: '⚡',
+                    ending: '🏁'
+                };
+                return icons[type] || '📝';
+            }
+
+            updateNodeDisplay(nodeObj) {
+                const { element, data } = nodeObj;
+                const content = element.querySelector('.node-content');
+                
+                let html = `<textarea class="node-input" placeholder="Enter ${data.type} content..." 
+                    oninput="storyEditor.updateNodeContent('${data.id}', this.value)">${data.content}</textarea>`;
+
+                if (data.type === 'choice') {
+                    html += '<div class="choice-container">';
+                    data.choices.forEach((choice, index) => {
+                        html += `
+                            <div class="choice-item">
+                                <input class="choice-text" placeholder="Choice text..." 
+                                    value="${choice.text}" 
+                                    oninput="storyEditor.updateChoice('${data.id}', ${index}, this.value)">
+                                <div class="choice-output" 
+                                    onclick="storyEditor.onConnectionPointClick(event, '${data.id}', 'output', ${index})"
+                                    title="Connect to next node"></div>
+                            </div>
+                        `;
+                    });
+                    html += `<button class="add-choice" onclick="storyEditor.addChoice('${data.id}')">+ Add Choice</button>`;
+                    html += '</div>';
+                } else if (data.type === 'condition') {
+                    html += `<input class="node-input" placeholder="Condition (e.g., health > 50)" 
+                        value="${data.condition || ''}" 
+                        oninput="storyEditor.updateCondition('${data.id}', this.value)">`;
+                    // Add output points for true/false
+                    html += `
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                            <div style="position: relative;">
+                                <span style="font-size: 12px; color: var(--success);">True</span>
+                                <div class="choice-output" style="position: static; margin-top: 5px;" 
+                                    onclick="storyEditor.onConnectionPointClick(event, '${data.id}', 'output', 0)"></div>
+                            </div>
+                            <div style="position: relative;">
+                                <span style="font-size: 12px; color: var(--danger);">False</span>
+                                <div class="choice-output" style="position: static; margin-top: 5px;" 
+                                    onclick="storyEditor.onConnectionPointClick(event, '${data.id}', 'output', 1)"></div>
+                            </div>
+                        </div>
+                    `;
+                } else if (data.type !== 'ending') {
+                    // Single output point for other node types
+                    const outputPoint = document.createElement('div');
+                    outputPoint.className = 'connection-point output-point';
+                    outputPoint.onclick = (e) => this.onConnectionPointClick(e, data.id, 'output');
+                    element.appendChild(outputPoint);
+                }
+
+                content.innerHTML = html;
+            }
+
+            makeNodeDraggable(node) {
+                let isDragging = false;
+                let startX, startY;
+
+                const onMouseDown = (e) => {
+                    if (e.target.classList.contains('node-input') || 
+                        e.target.classList.contains('choice-text') ||
+                        e.target.classList.contains('connection-point') ||
+                        e.target.classList.contains('node-delete') ||
+                        e.target.classList.contains('add-choice')) {
+                        return;
+                    }
+
+                    isDragging = true;
+                    startX = e.clientX - node.offsetLeft;
+                    startY = e.clientY - node.offsetTop;
+                    
+                    this.selectNode(node.getAttribute('data-node-id'));
+                    
+                    node.style.zIndex = '1000';
+                    e.preventDefault();
+                };
+
+                const onMouseMove = (e) => {
+                    if (!isDragging) return;
+                    
+                    const newX = e.clientX - startX;
+                    const newY = e.clientY - startY;
+                    
+                    node.style.left = Math.max(0, newX) + 'px';
+                    node.style.top = Math.max(0, newY) + 'px';
+                    
+                    // Update node data
+                    const nodeData = this.nodes.get(node.getAttribute('data-node-id'));
+                    nodeData.data.x = newX;
+                    nodeData.data.y = newY;
+                    
+                    this.updateConnections();
+                };
+
+                const onMouseUp = () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        node.style.zIndex = '';
+                    }
+                };
+
+                node.addEventListener('mousedown', onMouseDown);
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+
+            onConnectionPointClick(e, nodeId, type, choiceIndex = 0) {
+                e.stopPropagation();
+                
+                if (this.connectingFrom) {
+                    if (type === 'input' && this.connectingFrom.nodeId !== nodeId) {
+                        // Create connection
+                        this.connections.push({
+                            from: this.connectingFrom.nodeId,
+                            to: nodeId,
+                            fromChoice: this.connectingFrom.choiceIndex || 0
+                        });
+                        this.updateConnections();
+                        this.updateStats();
+                    }
+                    this.connectingFrom = null;
+                    this.canvasContainer.style.cursor = '';
+                } else {
+                    if (type === 'output') {
+                        this.connectingFrom = { nodeId, choiceIndex };
+                        this.canvasContainer.style.cursor = 'crosshair';
+                    }
+                }
+            }
+
+            selectNode(nodeId) {
+                // Remove previous selection
+                const prevSelected = this.canvas.querySelector('.node.selected');
+                if (prevSelected) prevSelected.classList.remove('selected');
+                
+                // Select new node
+                const node = this.canvas.querySelector(`[data-node-id="${nodeId}"]`);
+                if (node) {
+                    node.classList.add('selected');
+                    this.selectedNode = nodeId;
+                    this.updatePropertiesPanel();
+                }
+            }
+
+            updatePropertiesPanel() {
+                const panel = document.getElementById('nodeProperties');
+                if (!this.selectedNode) {
+                    panel.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">Select a node to edit properties</p>';
+                    return;
+                }
+
+                const nodeData = this.nodes.get(this.selectedNode)?.data;
+                if (!nodeData) return;
+
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <label class="property-label">Node Title</label>
+                        <input class="property-input" value="${nodeData.title}" 
+                            oninput="storyEditor.updateNodeTitle('${nodeData.id}', this.value)">
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Node Type</label>
+                        <select class="property-input" onchange="storyEditor.changeNodeType('${nodeData.id}', this.value)">
+                            <option value="start" ${nodeData.type === 'start' ? 'selected' : ''}>Start</option>
+                            <option value="dialogue" ${nodeData.type === 'dialogue' ? 'selected' : ''}>Dialogue</option>
+                            <option value="choice" ${nodeData.type === 'choice' ? 'selected' : ''}>Choice</option>
+                            <option value="condition" ${nodeData.type === 'condition' ? 'selected' : ''}>Condition</option>
+                            <option value="action" ${nodeData.type === 'action' ? 'selected' : ''}>Action</option>
+                            <option value="ending" ${nodeData.type === 'ending' ? 'selected' : ''}>Ending</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Position</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input class="property-input" placeholder="X" value="${nodeData.x}" 
+                                onchange="storyEditor.updateNodePosition('${nodeData.id}', parseInt(this.value), ${nodeData.y})">
+                            <input class="property-input" placeholder="Y" value="${nodeData.y}" 
+                                onchange="storyEditor.updateNodePosition('${nodeData.id}', ${nodeData.x}, parseInt(this.value))">
+                        </div>
+                    </div>
+                    ${nodeData.type === 'condition' ? `
+                        <div class="property-group">
+                            <label class="property-label">Condition Expression</label>
+                            <input class="property-input" placeholder="e.g., health > 50" value="${nodeData.condition || ''}" 
+                                oninput="storyEditor.updateCondition('${nodeData.id}', this.value)">
+                        </div>
+                    ` : ''}
+                    ${nodeData.type === 'action' ? `
+                        <div class="property-group">
+                            <label class="property-label">Variables to Set</label>
+                            <textarea class="property-input" placeholder="health = 100&#10;score += 10" 
+                                oninput="storyEditor.updateActionVariables('${nodeData.id}', this.value)">${this.stringifyVariables(nodeData.variables)}</textarea>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
+            stringifyVariables(variables) {
+                if (!variables || typeof variables !== 'object') return '';
+                return Object.entries(variables).map(([key, value]) => `${key} = ${value}`).join('\n');
+            }
+
+            updateNodeTitle(nodeId, title) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    nodeObj.data.title = title;
+                    const header = nodeObj.element.querySelector('.node-header span');
+                    header.textContent = `${this.getNodeIcon(nodeObj.data.type)} ${title}`;
+                }
+            }
+
+            updateNodeContent(nodeId, content) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    nodeObj.data.content = content;
+                }
+            }
+
+            updateNodePosition(nodeId, x, y) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    nodeObj.data.x = x;
+                    nodeObj.data.y = y;
+                    nodeObj.element.style.left = x + 'px';
+                    nodeObj.element.style.top = y + 'px';
+                    this.updateConnections();
+                }
+            }
+
+            changeNodeType(nodeId, newType) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    nodeObj.data.type = newType;
+                    
+                    // Reset type-specific data
+                    if (newType === 'choice') {
+                        nodeObj.data.choices = [{ text: 'Option 1', target: null }];
+                    } else {
+                        nodeObj.data.choices = [];
+                    }
+                    
+                    if (newType === 'condition') {
+                        nodeObj.data.condition = '';
+                    } else {
+                        nodeObj.data.condition = null;
+                    }
+                    
+                    if (newType === 'action') {
+                        nodeObj.data.variables = {};
+                    } else {
+                        nodeObj.data.variables = null;
+                    }
+                    
+                    this.updateNodeDisplay(nodeObj);
+                    this.updatePropertiesPanel();
+                }
+            }
+
+            updateCondition(nodeId, condition) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    nodeObj.data.condition = condition;
+                }
+            }
+
+            updateActionVariables(nodeId, variablesText) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    const variables = {};
+                    variablesText.split('\n').forEach(line => {
+                        const [key, value] = line.split('=').map(s => s.trim());
+                        if (key && value) {
+                            variables[key] = value;
+                        }
+                    });
+                    nodeObj.data.variables = variables;
+                }
+            }
+
+            addChoice(nodeId) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj && nodeObj.data.type === 'choice') {
+                    nodeObj.data.choices.push({ 
+                        text: `Option ${nodeObj.data.choices.length + 1}`, 
+                        target: null 
+                    });
+                    this.updateNodeDisplay(nodeObj);
+                }
+            }
+
+            updateChoice(nodeId, choiceIndex, text) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj && nodeObj.data.choices[choiceIndex]) {
+                    nodeObj.data.choices[choiceIndex].text = text;
+                }
+            }
+
+            deleteNode(nodeId) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj) {
+                    // Remove connections involving this node
+                    this.connections = this.connections.filter(conn => 
+                        conn.from !== nodeId && conn.to !== nodeId
+                    );
+                    
+                    // Remove from DOM
+                    nodeObj.element.remove();
+                    
+                    // Remove from nodes map
+                    this.nodes.delete(nodeId);
+                    
+                    // Clear selection if this node was selected
+                    if (this.selectedNode === nodeId) {
+                        this.selectedNode = null;
+                        this.updatePropertiesPanel();
+                    }
+                    
+                    this.updateConnections();
+                    this.updateStats();
+                }
+            }
+
+            addNode(type) {
+                // Add node at center of viewport
+                const rect = this.canvasContainer.getBoundingClientRect();
+                const x = (rect.width / 2 - this.panX) / this.zoom;
+                const y = (rect.height / 2 - this.panY) / this.zoom;
+                
+                const node = this.createNode(type, x, y);
+                this.updateNodeDisplay(node);
+                this.selectNode(node.data.id);
+            }
+
+            updateConnections() {
+                const svg = this.connectionsLayer;
+                svg.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" /></marker></defs>';
+                
+                this.connections.forEach(connection => {
+                    const fromNode = this.nodes.get(connection.from);
+                    const toNode = this.nodes.get(connection.to);
+                    
+                    if (fromNode && toNode) {
+                        const fromRect = fromNode.element.getBoundingClientRect();
+                        const toRect = toNode.element.getBoundingClientRect();
+                        const canvasRect = this.canvasContainer.getBoundingClientRect();
+                        
+                        const fromX = fromRect.right - canvasRect.left;
+                        const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+                        const toX = toRect.left - canvasRect.left;
+                        const toY = toRect.top + toRect.height / 2 - canvasRect.top;
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const controlPoint1X = fromX + (toX - fromX) * 0.5;
+                        const controlPoint2X = fromX + (toX - fromX) * 0.5;
+                        
+                        path.setAttribute('d', `M ${fromX} ${fromY} C ${controlPoint1X} ${fromY} ${controlPoint2X} ${toY} ${toX} ${toY}`);
+                        path.setAttribute('class', 'connection-line');
+                        path.setAttribute('marker-end', 'url(#arrowhead)');
+                        
+                        svg.appendChild(path);
+                    }
+                });
+            }
+
+            updateStats() {
+                document.getElementById('nodeCount').textContent = this.nodes.size;
+                document.getElementById('connectionCount').textContent = this.connections.length;
+            }
+
+            // Canvas interaction methods
+            onCanvasMouseDown(e) {
+                if (e.target === this.canvasContainer || e.target === this.canvas) {
+                    this.isDragging = true;
+                    this.lastMouseX = e.clientX;
+                    this.lastMouseY = e.clientY;
+                    this.canvasContainer.style.cursor = 'grabbing';
+                    
+                    // Clear selection
+                    const prevSelected = this.canvas.querySelector('.node.selected');
+                    if (prevSelected) prevSelected.classList.remove('selected');
+                    this.selectedNode = null;
+                    this.updatePropertiesPanel();
+                }
+            }
+
+            onMouseMove(e) {
+                if (this.isDragging) {
+                    const deltaX = e.clientX - this.lastMouseX;
+                    const deltaY = e.clientY - this.lastMouseY;
+                    
+                    this.panX += deltaX;
+                    this.panY += deltaY;
+                    
+                    this.canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+                    
+                    this.lastMouseX = e.clientX;
+                    this.lastMouseY = e.clientY;
+                }
+            }
+
+            onMouseUp(e) {
+                if (this.isDragging) {
+                    this.isDragging = false;
+                    this.canvasContainer.style.cursor = '';
+                }
+            }
+
+            onKeyDown(e) {
+                if (e.key === 'Delete' && this.selectedNode) {
+                    this.deleteNode(this.selectedNode);
+                } else if (e.key === 'Escape') {
+                    this.connectingFrom = null;
+                    this.canvasContainer.style.cursor = '';
+                }
+            }
+
+            // Zoom controls
+            zoomIn() {
+                this.zoom = Math.min(this.zoom * 1.2, 3);
+                this.canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+            }
+
+            zoomOut() {
+                this.zoom = Math.max(this.zoom / 1.2, 0.3);
+                this.canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+            }
+
+            resetZoom() {
+                this.zoom = 1;
+                this.panX = 0;
+                this.panY = 0;
+                this.canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+            }
+
+            // Project management
+            newProject() {
+                if (confirm('Create a new project? This will clear the current story.')) {
+                    this.nodes.clear();
+                    this.connections = [];
+                    this.canvas.innerHTML = '';
+                    this.nodeIdCounter = 0;
+                    this.selectedNode = null;
+                    this.connectingFrom = null;
+                    this.updateStats();
+                    this.updatePropertiesPanel();
+                    this.addStartNode();
+                }
+            }
+
+            exportToJSON() {
+                const storyData = {
+                    nodes: Array.from(this.nodes.values()).map(nodeObj => nodeObj.data),
+                    connections: this.connections,
+                    metadata: {
+                        title: 'Interactive Story',
+                        author: 'StoryGraph Pro',
+                        created: new Date().toISOString(),
+                        version: '1.0'
+                    }
+                };
+
+                const jsonString = JSON.stringify(storyData, null, 2);
+                
+                this.showModal('Export Story Data', `
+                    <p>Copy the JSON data below to save your story:</p>
+                    <div class="json-output">${this.escapeHtml(jsonString)}</div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn success" onclick="storyEditor.downloadJSON('${this.escapeHtml(jsonString)}')">
+                            💾 Download JSON File
+                        </button>
+                        <button class="btn secondary" onclick="storyEditor.copyToClipboard('${this.escapeHtml(jsonString)}')">
+                            📋 Copy to Clipboard
+                        </button>
+                    </div>
+                `);
+            }
+
+            downloadJSON(jsonString) {
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'story_' + Date.now() + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showNotification('Copied to clipboard!', 'success');
+                }).catch(() => {
+                    this.showNotification('Failed to copy to clipboard', 'error');
+                });
+            }
+
+            importProject() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const storyData = JSON.parse(e.target.result);
+                                this.loadStoryData(storyData);
+                                this.showNotification('Story imported successfully!', 'success');
+                            } catch (error) {
+                                this.showNotification('Invalid JSON file', 'error');
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+                input.click();
+            }
+
+            loadStoryData(storyData) {
+                // Clear current project
+                this.nodes.clear();
+                this.connections = [];
+                this.canvas.innerHTML = '';
+                
+                // Load nodes
+                if (storyData.nodes) {
+                    storyData.nodes.forEach(nodeData => {
+                        const nodeElement = this.createNodeElement(nodeData);
+                        this.canvas.appendChild(nodeElement);
+                        const nodeObj = { element: nodeElement, data: nodeData };
+                        this.nodes.set(nodeData.id, nodeObj);
+                        this.updateNodeDisplay(nodeObj);
+                        
+                        if (parseInt(nodeData.id.split('_')[1]) >= this.nodeIdCounter) {
+                            this.nodeIdCounter = parseInt(nodeData.id.split('_')[1]);
+                        }
+                    });
+                }
+                
+                // Load connections
+                if (storyData.connections) {
+                    this.connections = storyData.connections;
+                }
+                
+                this.updateConnections();
+                this.updateStats();
+            }
+
+            previewStory() {
+                const startNode = Array.from(this.nodes.values()).find(n => n.data.type === 'start');
+                if (!startNode) {
+                    this.showNotification('No start node found!', 'error');
+                    return;
+                }
+                
+                this.showModal('Story Preview', `
+                    <div class="preview-container">
+                        <div id="storyPreview">
+                            <div class="preview-node">
+                                <h3>${startNode.data.title}</h3>
+                                <p>${startNode.data.content}</p>
+                                ${this.renderPreviewChoices(startNode.data.id)}
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn secondary" onclick="storyEditor.resetPreview('${startNode.data.id}')">
+                                🔄 Reset to Beginning
+                            </button>
+                        </div>
+                    </div>
+                `);
+            }
+
+            renderPreviewChoices(nodeId) {
+                const connections = this.connections.filter(c => c.from === nodeId);
+                if (connections.length === 0) return '<p style="color: var(--text-secondary); font-style: italic;">End of story</p>';
+                
+                const nodeObj = this.nodes.get(nodeId);
+                if (nodeObj.data.type === 'choice') {
+                    let html = '<div class="preview-choices">';
+                    nodeObj.data.choices.forEach((choice, index) => {
+                        const connection = connections.find(c => c.fromChoice === index);
+                        if (connection) {
+                            html += `<div class="preview-choice" onclick="storyEditor.navigateToNode('${connection.to}')">${choice.text}</div>`;
+                        }
+                    });
+                    html += '</div>';
+                    return html;
+                } else {
+                    const connection = connections[0];
+                    return `<div class="preview-choices">
+                        <div class="preview-choice" onclick="storyEditor.navigateToNode('${connection.to}')">Continue</div>
+                    </div>`;
+                }
+            }
+
+            navigateToNode(nodeId) {
+                const nodeObj = this.nodes.get(nodeId);
+                if (!nodeObj) return;
+                
+                document.getElementById('storyPreview').innerHTML = `
+                    <div class="preview-node">
+                        <h3>${nodeObj.data.title}</h3>
+                        <p>${nodeObj.data.content}</p>
+                        ${this.renderPreviewChoices(nodeId)}
+                    </div>
+                `;
+            }
+
+            resetPreview(startNodeId) {
+                this.navigateToNode(startNodeId);
+            }
+
+            validateStory() {
+                const errors = [];
+                const warnings = [];
+                
+                // Check for start node
+                const startNodes = Array.from(this.nodes.values()).filter(n => n.data.type === 'start');
+                if (startNodes.length === 0) {
+                    errors.push('No start node found');
+                } else if (startNodes.length > 1) {
+                    warnings.push('Multiple start nodes found');
+                }
+                
+                // Check for unreachable nodes
+                const reachableNodes = new Set();
+                const startNode = startNodes[0];
+                if (startNode) {
+                    this.findReachableNodes(startNode.data.id, reachableNodes);
+                    
+                    Array.from(this.nodes.keys()).forEach(nodeId => {
+                        if (!reachableNodes.has(nodeId) && this.nodes.get(nodeId).data.type !== 'start') {
+                            warnings.push(`Node "${this.nodes.get(nodeId).data.title}" is unreachable`);
+                        }
+                    });
+                }
+                
+                // Check for nodes with no content
+                Array.from(this.nodes.values()).forEach(nodeObj => {
+                    if (!nodeObj.data.content && nodeObj.data.type !== 'condition') {
+                        warnings.push(`Node "${nodeObj.data.title}" has no content`);
+                    }
+                });
+                
+                // Check for choice nodes with no choices
+                Array.from(this.nodes.values()).forEach(nodeObj => {
+                    if (nodeObj.data.type === 'choice' && nodeObj.data.choices.length === 0) {
+                        errors.push(`Choice node "${nodeObj.data.title}" has no choices`);
+                    }
+                });
+                
+                let resultHtml = '<h3>Validation Results</h3>';
+                
+                if (errors.length === 0 && warnings.length === 0) {
+                    resultHtml += '<div style="color: var(--success); font-weight: bold;">✅ Story structure is valid!</div>';
+                } else {
+                    if (errors.length > 0) {
+                        resultHtml += '<h4 style="color: var(--danger);">Errors:</h4><ul>';
+                        errors.forEach(error => {
+                            resultHtml += `<li style="color: var(--danger);">${error}</li>`;
+                        });
+                        resultHtml += '</ul>';
+                    }
+                    
+                    if (warnings.length > 0) {
+                        resultHtml += '<h4 style="color: var(--warning);">Warnings:</h4><ul>';
+                        warnings.forEach(warning => {
+                            resultHtml += `<li style="color: var(--warning);">${warning}</li>`;
+                        });
+                        resultHtml += '</ul>';
+                    }
+                }
+                
+                this.showModal('Story Validation', resultHtml);
+            }
+
+            findReachableNodes(nodeId, reachableNodes) {
+                if (reachableNodes.has(nodeId)) return;
+                reachableNodes.add(nodeId);
+                
+                const connections = this.connections.filter(c => c.from === nodeId);
+                connections.forEach(connection => {
+                    this.findReachableNodes(connection.to, reachableNodes);
+                });
+            }
+
+            // Utility methods
+            showModal(title, content) {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            ${title}
+                            <button class="btn secondary" style="float: right;" onclick="this.closest('.modal').remove()">×</button>
+                        </div>
+                        ${content}
+                    </div>
+                `;
+                
+                modal.onclick = (e) => {
+                    if (e.target === modal) modal.remove();
+                };
+                
+                document.body.appendChild(modal);
+            }
+
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--accent)'};
+                    color: var(--text);
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    z-index: 10001;
+                    animation: slideIn 0.3s ease;
+                `;
+                notification.textContent = message;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Initialize the editor
+        const storyEditor = new StoryEditor();
+        
+        // Add some sample content for demonstration
+        setTimeout(() => {
+            const dialogueNode = storyEditor.createNode('dialogue', 400, 100);
+            dialogueNode.data.title = 'Character Introduction';
+            dialogueNode.data.content = 'A mysterious figure approaches you in the fog...';
+            storyEditor.updateNodeDisplay(dialogueNode);
+            
+            const choiceNode = storyEditor.createNode('choice', 700, 100);
+            choiceNode.data.title = 'Player Decision';
+            choiceNode.data.content = 'What do you do?';
+            choiceNode.data.choices = [
+                { text: 'Approach cautiously', target: null },
+                { text: 'Call out to them', target: null },
+                { text: 'Hide behind a tree', target: null }
+            ];
+            storyEditor.updateNodeDisplay(choiceNode);
+            
+            // Add connections
+            storyEditor.connections.push({ from: 'node_1', to: 'node_2', fromChoice: 0 });
+            storyEditor.connections.push({ from: 'node_2', to: 'node_3', fromChoice: 0 });
+            
+            storyEditor.updateConnections();
+            storyEditor.updateStats();
+        }, 100);
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
