@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryFlow Pro - Nonlinear Story Game Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(90deg, #2c3e50, #3498db);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #34495e;
+            color: white;
+            margin-top: 60px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-section h3 {
+            margin-bottom: 15px;
+            color: #ecf0f1;
+            font-size: 18px;
+        }
+
+        .node-template {
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .node-template:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+            border-left-color: #3498db;
+        }
+
+        .properties-panel {
+            background: #2c3e50;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ecf0f1;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #34495e;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.9);
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        /* Main Canvas */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            position: relative;
+            cursor: grab;
+        }
+
+        .canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Story Nodes */
+        .story-node {
+            position: absolute;
+            min-width: 250px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            cursor: move;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .story-node:hover {
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+
+        .story-node.selected {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+
+        .node-header {
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-start { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .node-dialogue { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .node-choice { background: linear-gradient(135deg, #e67e22, #d35400); }
+        .node-condition { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .node-end { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        .node-content {
+            padding: 15px;
+        }
+
+        .node-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .node-text {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .choice-list {
+            margin-top: 10px;
+        }
+
+        .choice-item {
+            background: #f8f9fa;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+            font-size: 13px;
+        }
+
+        .connection-point {
+            width: 12px;
+            height: 12px;
+            background: #3498db;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .connection-point:hover {
+            transform: scale(1.3);
+            background: #e74c3c;
+        }
+
+        .connection-point.output {
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-point.input {
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* SVG Connections */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: #3498db;
+            stroke-width: 3;
+            fill: none;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            transition: all 0.3s ease;
+        }
+
+        .connection-line:hover {
+            stroke: #e74c3c;
+            stroke-width: 4;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            z-index: 1000;
+            min-width: 180px;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        /* Minimap */
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 120px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 10px;
+        }
+
+        .minimap-canvas {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .code-preview {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* Animations */
+        @keyframes nodeAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .story-node.new {
+            animation: nodeAppear 0.4s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+            .minimap {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🎮 StoryFlow Pro</div>
+            <div class="header-controls">
+                <button class="btn btn-secondary" onclick="saveProject()">💾 Save Project</button>
+                <button class="btn btn-secondary" onclick="loadProject()">📂 Load Project</button>
+                <button class="btn btn-secondary" onclick="showPreview()">👁️ Preview</button>
+                <button class="btn btn-primary" onclick="exportProject()">📤 Export JSON</button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>🎯 Node Types</h3>
+                <div class="node-template" data-type="start">
+                    <strong>Start Node</strong><br>
+                    <small>Story beginning point</small>
+                </div>
+                <div class="node-template" data-type="dialogue">
+                    <strong>Dialogue Node</strong><br>
+                    <small>Character dialogue or narration</small>
+                </div>
+                <div class="node-template" data-type="choice">
+                    <strong>Choice Node</strong><br>
+                    <small>Player decision point</small>
+                </div>
+                <div class="node-template" data-type="condition">
+                    <strong>Condition Node</strong><br>
+                    <small>Logic/variable check</small>
+                </div>
+                <div class="node-template" data-type="end">
+                    <strong>End Node</strong><br>
+                    <small>Story conclusion</small>
+                </div>
+            </div>
+
+            <div class="sidebar-section properties-panel">
+                <h3>⚙️ Properties</h3>
+                <div id="node-properties">
+                    <p style="color: #bdc3c7; font-style: italic;">Select a node to edit its properties</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas -->
+        <div class="canvas-container">
+            <div class="canvas" id="canvas">
+                <svg class="connections-svg" id="connections-svg"></svg>
+            </div>
+            
+            <!-- Minimap -->
+            <div class="minimap">
+                <canvas class="minimap-canvas" id="minimap-canvas" width="180" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Preview/Export -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Preview</h2>
+            <div id="modal-body"></div>
+            <button class="btn btn-primary" onclick="closeModal()" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let nodes = new Map();
+        let connections = [];
+        let selectedNode = null;
+        let draggedNode = null;
+        let isConnecting = false;
+        let connectionStart = null;
+        let canvasOffset = { x: 0, y: 0 };
+        let scale = 1;
+        let nodeIdCounter = 1;
+
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const connectionsSvg = document.getElementById('connections-svg');
+
+        // Initialize the editor
+        function initializeEditor() {
+            setupEventListeners();
+            createStartNode();
+            updateMinimap();
+        }
+
+        function setupEventListeners() {
+            // Node template drag and drop
+            document.querySelectorAll('.node-template').forEach(template => {
+                template.addEventListener('click', (e) => {
+                    const type = template.dataset.type;
+                    createNode(type, 300 + Math.random() * 200, 200 + Math.random() * 100);
+                });
+            });
+
+            // Canvas events
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('contextmenu', handleContextMenu);
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            canvas.addEventListener('mouseup', handleCanvasMouseUp);
+            canvas.addEventListener('wheel', handleCanvasWheel);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        function createNode(type, x, y) {
+            const nodeId = `node-${nodeIdCounter++}`;
+            const nodeData = {
+                id: nodeId,
+                type: type,
+                x: x,
+                y: y,
+                title: getDefaultTitle(type),
+                content: getDefaultContent(type),
+                choices: type === 'choice' ? ['Choice 1', 'Choice 2'] : [],
+                condition: type === 'condition' ? 'variable == "value"' : '',
+                character: type === 'dialogue' ? 'Narrator' : '',
+                variables: {}
+            };
+
+            nodes.set(nodeId, nodeData);
+            renderNode(nodeData);
+            updateMinimap();
+            return nodeId;
+        }
+
+        function getDefaultTitle(type) {
+            const titles = {
+                start: 'Story Start',
+                dialogue: 'Dialogue',
+                choice: 'Player Choice',
+                condition: 'Condition Check',
+                end: 'Story End'
+            };
+            return titles[type] || 'Node';
+        }
+
+        function getDefaultContent(type) {
+            const contents = {
+                start: 'Welcome to your story! This is where everything begins.',
+                dialogue: 'Enter your dialogue or narration text here.',
+                choice: 'Present the situation that leads to player choices.',
+                condition: 'This node checks game state and variables.',
+                end: 'Congratulations! You\'ve reached an ending.'
+            };
+            return contents[type] || 'Node content';
+        }
+
+        function renderNode(nodeData) {
+            const nodeElement = document.createElement('div');
+            nodeElement.className = `story-node node-${nodeData.type} new`;
+            nodeElement.id = nodeData.id;
+            nodeElement.style.left = nodeData.x + 'px';
+            nodeElement.style.top = nodeData.y + 'px';
+
+            const headerIcon = {
+                start: '🚀',
+                dialogue: '💬',
+                choice: '🎯',
+                condition: '🔍',
+                end: '🏁'
+            };
+
+            let choicesHtml = '';
+            if (nodeData.type === 'choice' && nodeData.choices.length > 0) {
+                choicesHtml = '<div class="choice-list">' +
+                    nodeData.choices.map(choice => 
+                        `<div class="choice-item">${choice}</div>`
+                    ).join('') +
+                '</div>';
+            }
+
+            nodeElement.innerHTML = `
+                <div class="node-header">
+                    <span>${headerIcon[nodeData.type]} ${nodeData.title}</span>
+                    <span style="font-size: 12px; opacity: 0.8;">${nodeData.type.toUpperCase()}</span>
+                </div>
+                <div class="node-content">
+                    ${nodeData.type === 'dialogue' && nodeData.character ? 
+                        `<div class="node-title">${nodeData.character}:</div>` : ''}
+                    <div class="node-text">${nodeData.content}</div>
+                    ${choicesHtml}
+                    ${nodeData.type === 'condition' ? 
+                        `<div style="margin-top: 8px; font-size: 12px; color: #666;">
+                            Condition: ${nodeData.condition}
+                        </div>` : ''}
+                </div>
+                <div class="connection-point input"></div>
+                <div class="connection-point output"></div>
+            `;
+
+            // Add event listeners
+            nodeElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectNode(nodeData.id);
+            });
+
+            nodeElement.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('connection-point')) {
+                    handleConnectionStart(e, nodeData.id);
+                } else {
+                    handleNodeDragStart(e, nodeData.id);
+                }
+            });
+
+            // Connection point events
+            const connectionPoints = nodeElement.querySelectorAll('.connection-point');
+            connectionPoints.forEach(point => {
+                point.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    handleConnectionStart(e, nodeData.id, point.classList.contains('output'));
+                });
+                
+                point.addEventListener('mouseup', (e) => {
+                    if (isConnecting) {
+                        handleConnectionEnd(e, nodeData.id, point.classList.contains('input'));
+                    }
+                });
+            });
+
+            canvas.appendChild(nodeElement);
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                nodeElement.classList.remove('new');
+            }, 400);
+        }
+
+        function selectNode(nodeId) {
+            // Remove previous selection
+            document.querySelectorAll('.story-node').forEach(node => {
+                node.classList.remove('selected');
+            });
+
+            // Select new node
+            const nodeElement = document.getElementById(nodeId);
+            nodeElement.classList.add('selected');
+            selectedNode = nodeId;
+
+            // Update properties panel
+            updatePropertiesPanel(nodeId);
+        }
+
+        function updatePropertiesPanel(nodeId) {
+            const nodeData = nodes.get(nodeId);
+            const propertiesDiv = document.getElementById('node-properties');
+
+            if (!nodeData) return;
+
+            let propertiesHtml = `
+                <div class="form-group">
+                    <label>Title:</label>
+                    <input type="text" id="prop-title" value="${nodeData.title}" onchange="updateNodeProperty('${nodeId}', 'title', this.value)">
+                </div>
+                <div class="form-group">
+                    <label>Content:</label>
+                    <textarea id="prop-content" onchange="updateNodeProperty('${nodeId}', 'content', this.value)">${nodeData.content}</textarea>
+                </div>
+            `;
+
+            if (nodeData.type === 'dialogue') {
+                propertiesHtml += `
+                    <div class="form-group">
+                        <label>Character:</label>
+                        <input type="text" id="prop-character" value="${nodeData.character}" onchange="updateNodeProperty('${nodeId}', 'character', this.value)">
+                    </div>
+                `;
+            }
+
+            if (nodeData.type === 'choice') {
+                propertiesHtml += `
+                    <div class="form-group">
+                        <label>Choices:</label>
+                        <div id="choices-list">
+                `;
+                
+                nodeData.choices.forEach((choice, index) => {
+                    propertiesHtml += `
+                        <div style="display: flex; margin-bottom: 5px;">
+                            <input type="text" value="${choice}" onchange="updateChoice('${nodeId}', ${index}, this.value)" style="flex: 1; margin-right: 5px;">
+                            <button onclick="removeChoice('${nodeId}', ${index})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px;">✕</button>
+                        </div>
+                    `;
+                });
+
+                propertiesHtml += `
+                        </div>
+                        <button onclick="addChoice('${nodeId}')" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">+ Add Choice</button>
+                    </div>
+                `;
+            }
+
+            if (nodeData.type === 'condition') {
+                propertiesHtml += `
+                    <div class="form-group">
+                        <label>Condition:</label>
+                        <input type="text" id="prop-condition" value="${nodeData.condition}" onchange="updateNodeProperty('${nodeId}', 'condition', this.value)">
+                    </div>
+                `;
+            }
+
+            propertiesDiv.innerHTML = propertiesHtml;
+        }
+
+        function updateNodeProperty(nodeId, property, value) {
+            const nodeData = nodes.get(nodeId);
+            if (nodeData) {
+                nodeData[property] = value;
+                renderAllNodes();
+            }
+        }
+
+        function updateChoice(nodeId, index, value) {
+            const nodeData = nodes.get(nodeId);
+            if (nodeData && nodeData.choices) {
+                nodeData.choices[index] = value;
+                renderAllNodes();
+            }
+        }
+
+        function addChoice(nodeId) {
+            const nodeData = nodes.get(nodeId);
+            if (nodeData && nodeData.choices) {
+                nodeData.choices.push('New Choice');
+                updatePropertiesPanel(nodeId);
+                renderAllNodes();
+            }
+        }
+
+        function removeChoice(nodeId, index) {
+            const nodeData = nodes.get(nodeId);
+            if (nodeData && nodeData.choices && nodeData.choices.length > 1) {
+                nodeData.choices.splice(index, 1);
+                updatePropertiesPanel(nodeId);
+                renderAllNodes();
+            }
+        }
+
+        function renderAllNodes() {
+            // Clear existing nodes
+            document.querySelectorAll('.story-node').forEach(node => node.remove());
+            
+            // Re-render all nodes
+            nodes.forEach(nodeData => {
+                renderNode(nodeData);
+            });
+            
+            // Re-select the selected node
+            if (selectedNode) {
+                selectNode(selectedNode);
+            }
+            
+            renderConnections();
+            updateMinimap();
+        }
+
+        function handleConnectionStart(e, nodeId, isOutput = true) {
+            e.stopPropagation();
+            isConnecting = true;
+            connectionStart = { nodeId, isOutput };
+            canvas.style.cursor = 'crosshair';
+        }
+
+        function handleConnectionEnd(e, nodeId, isInput = true) {
+            if (isConnecting && connectionStart && connectionStart.nodeId !== nodeId) {
+                if ((connectionStart.isOutput && isInput) || (!connectionStart.isOutput && !isInput)) {
+                    createConnection(connectionStart.nodeId, nodeId);
+                }
+            }
+            isConnecting = false;
+            connectionStart = null;
+            canvas.style.cursor = 'grab';
+        }
+
+        function createConnection(fromNodeId, toNodeId) {
+            const connection = { from: fromNodeId, to: toNodeId };
+            
+            // Check if connection already exists
+            const exists = connections.some(conn => 
+                conn.from === fromNodeId && conn.to === toNodeId
+            );
+            
+            if (!exists) {
+                connections.push(connection);
+                renderConnections();
+                updateMinimap();
+            }
+        }
+
+        function renderConnections() {
+            connectionsSvg.innerHTML = '';
+            
+            connections.forEach(connection => {
+                const fromNode = document.getElementById(connection.from);
+                const toNode = document.getElementById(connection.to);
+                
+                if (fromNode && toNode) {
+                    const fromRect = fromNode.getBoundingClientRect();
+                    const toRect = toNode.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    
+                    const x1 = fromRect.right - canvasRect.left;
+                    const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+                    const x2 = toRect.left - canvasRect.left;
+                    const y2 = toRect.top + toRect.height / 2 - canvasRect.top;
+                    
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const dr = Math.sqrt(dx * dx + dy * dy) * 0.3;
+                    
+                    path.setAttribute('d', `M${x1},${y1} Q${x1 + dx/2 + dr},${y1} ${x2},${y2}`);
+                    path.setAttribute('class', 'connection-line');
+                    path.setAttribute('marker-end', 'url(#arrowhead)');
+                    
+                    connectionsSvg.appendChild(path);
+                }
+            });
+            
+            // Add arrowhead marker if it doesn't exist
+            if (!connectionsSvg.querySelector('#arrowhead')) {
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', 'arrowhead');
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '7');
+                marker.setAttribute('refX', '9');
+                marker.setAttribute('refY', '3.5');
+                marker.setAttribute('orient', 'auto');
+                
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+                polygon.setAttribute('fill', '#3498db');
+                
+                marker.appendChild(polygon);
+                defs.appendChild(marker);
+                connectionsSvg.appendChild(defs);
+            }
+        }
+
+        function handleNodeDragStart(e, nodeId) {
+            draggedNode = nodeId;
+            const node = document.getElementById(nodeId);
+            const rect = node.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            draggedNode = {
+                id: nodeId,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top
+            };
+        }
+
+        function handleCanvasClick(e) {
+            if (e.target === canvas) {
+                // Deselect all nodes
+                document.querySelectorAll('.story-node').forEach(node => {
+                    node.classList.remove('selected');
+                });
+                selectedNode = null;
+                document.getElementById('node-properties').innerHTML = '<p style="color: #bdc3c7; font-style: italic;">Select a node to edit its properties</p>';
+            }
+        }
+
+        function handleCanvasMouseDown(e) {
+            if (e.target === canvas) {
+                canvas.style.cursor = 'grabbing';
+            }
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (draggedNode) {
+                const canvasRect = canvas.getBoundingClientRect();
+                const nodeData = nodes.get(draggedNode.id);
+                
+                nodeData.x = e.clientX - canvasRect.left - draggedNode.offsetX;
+                nodeData.y = e.clientY - canvasRect.top - draggedNode.offsetY;
+                
+                const nodeElement = document.getElementById(draggedNode.id);
+                nodeElement.style.left = nodeData.x + 'px';
+                nodeElement.style.top = nodeData.y + 'px';
+                
+                renderConnections();
+                updateMinimap();
+            }
+        }
+
+        function handleCanvasMouseUp(e) {
+            draggedNode = null;
+            canvas.style.cursor = 'grab';
+            isConnecting = false;
+            connectionStart = null;
+        }
+
+        function handleCanvasWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= delta;
+            scale = Math.max(0.5, Math.min(2, scale));
+            
+            canvas.style.transform = `scale(${scale})`;
+            canvas.style.transformOrigin = '0 0';
+        }
+
+        function handleContextMenu(e) {
+            e.preventDefault();
+            
+            const contextMenu = document.createElement('div');
+            contextMenu.className = 'context-menu';
+            contextMenu.style.left = e.clientX + 'px';
+            contextMenu.style.top = e.clientY + 'px';
+            
+            contextMenu.innerHTML = `
+                <div class="context-menu-item" onclick="createNode('dialogue', ${e.offsetX}, ${e.offsetY}); closeContextMenu()">Add Dialogue Node</div>
+                <div class="context-menu-item" onclick="createNode('choice', ${e.offsetX}, ${e.offsetY}); closeContextMenu()">Add Choice Node</div>
+                <div class="context-menu-item" onclick="createNode('condition', ${e.offsetX}, ${e.offsetY}); closeContextMenu()">Add Condition Node</div>
+                <div class="context-menu-item" onclick="createNode('end', ${e.offsetX}, ${e.offsetY}); closeContextMenu()">Add End Node</div>
+                ${selectedNode ? `<div class="context-menu-item" onclick="deleteNode('${selectedNode}'); closeContextMenu()">Delete Selected Node</div>` : ''}
+            `;
+            
+            document.body.appendChild(contextMenu);
+            
+            setTimeout(() => {
+                document.addEventListener('click', closeContextMenu);
+            }, 100);
+        }
+
+        function closeContextMenu() {
+            const contextMenu = document.querySelector('.context-menu');
+            if (contextMenu) {
+                contextMenu.remove();
+            }
+            document.removeEventListener('click', closeContextMenu);
+        }
+
+        function deleteNode(nodeId) {
+            if (nodes.has(nodeId)) {
+                // Remove node
+                nodes.delete(nodeId);
+                const nodeElement = document.getElementById(nodeId);
+                if (nodeElement) {
+                    nodeElement.remove();
+                }
+                
+                // Remove connections
+                connections = connections.filter(conn => 
+                    conn.from !== nodeId && conn.to !== nodeId
+                );
+                
+                // Clear selection if this was the selected node
+                if (selectedNode === nodeId) {
+                    selectedNode = null;
+                    document.getElementById('node-properties').innerHTML = '<p style="color: #bdc3c7; font-style: italic;">Select a node to edit its properties</p>';
+                }
+                
+                renderConnections();
+                updateMinimap();
+            }
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Delete' && selectedNode) {
+                deleteNode(selectedNode);
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveProject();
+                        break;
+                    case 'o':
+                        e.preventDefault();
+                        loadProject();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportProject();
+                        break;
+                }
+            }
+        }
+
+        function createStartNode() {
+            createNode('start', 100, 200);
+        }
+
+        function updateMinimap() {
+            const minimapCanvas = document.getElementById('minimap-canvas');
+            const ctx = minimapCanvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            
+            // Calculate bounds
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            
+            nodes.forEach(node => {
+                minX = Math.min(minX, node.x);
+                minY = Math.min(minY, node.y);
+                maxX = Math.max(maxX, node.x + 250);
+                maxY = Math.max(maxY, node.y + 100);
+            });
+            
+            if (nodes.size === 0) return;
+            
+            const scaleX = minimapCanvas.width / (maxX - minX + 100);
+            const scaleY = minimapCanvas.height / (maxY - minY + 100);
+            const mapScale = Math.min(scaleX, scaleY);
+            
+            // Draw connections
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 1;
+            connections.forEach(conn => {
+                const fromNode = nodes.get(conn.from);
+                const toNode = nodes.get(conn.to);
+                if (fromNode && toNode) {
+                    ctx.beginPath();
+                    ctx.moveTo((fromNode.x - minX) * mapScale, (fromNode.y - minY) * mapScale);
+                    ctx.lineTo((toNode.x - minX) * mapScale, (toNode.y - minY) * mapScale);
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw nodes
+            nodes.forEach(node => {
+                const x = (node.x - minX) * mapScale;
+                const y = (node.y - minY) * mapScale;
+                const width = 250 * mapScale;
+                const height = 60 * mapScale;
+                
+                const colors = {
+                    start: '#27ae60',
+                    dialogue: '#3498db',
+                    choice: '#e67e22',
+                    condition: '#9b59b6',
+                    end: '#e74c3c'
+                };
+                
+                ctx.fillStyle = colors[node.type] || '#95a5a6';
+                ctx.fillRect(x, y, width, height);
+                
+                if (selectedNode === node.id) {
+                    ctx.strokeStyle = '#f39c12';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, width, height);
+                }
+            });
+        }
+
+        function saveProject() {
+            const projectData = {
+                nodes: Array.from(nodes.entries()),
+                connections: connections,
+                metadata: {
+                    title: 'My Story Project',
+                    author: 'Story Creator',
+                    version: '1.0',
+                    created: new Date().toISOString()
+                }
+            };
+            
+            const dataStr = JSON.stringify(projectData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'story-project.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            
+            showNotification('Project saved successfully!', 'success');
+        }
+
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const projectData = JSON.parse(e.target.result);
+                            
+                            // Clear existing data
+                            nodes.clear();
+                            connections = [];
+                            document.querySelectorAll('.story-node').forEach(node => node.remove());
+                            
+                            // Load nodes
+                            projectData.nodes.forEach(([id, nodeData]) => {
+                                nodes.set(id, nodeData);
+                                renderNode(nodeData);
+                            });
+                            
+                            // Load connections
+                            connections = projectData.connections || [];
+                            
+                            renderConnections();
+                            updateMinimap();
+                            
+                            showNotification('Project loaded successfully!', 'success');
+                            
+                        } catch (error) {
+                            showNotification('Error loading project file!', 'error');
+                            console.error(error);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            input.click();
+        }
+
+        function exportProject() {
+            const storyData = generateStoryJSON();
+            const modalBody = document.getElementById('modal-body');
+            
+            modalBody.innerHTML = `
+                <h3>📤 Export Options</h3>
+                <div style="margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="downloadJSON()" style="margin-right: 10px;">Download JSON</button>
+                    <button class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                </div>
+                <h4>Preview:</h4>
+                <div class="code-preview" id="json-preview">${JSON.stringify(storyData, null, 2)}</div>
+            `;
+            
+            document.getElementById('modal-title').textContent = 'Export Story Data';
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function generateStoryJSON() {
+            const storyData = {
+                metadata: {
+                    title: 'Interactive Story',
+                    format: 'StoryFlow Pro',
+                    version: '1.0',
+                    exported: new Date().toISOString(),
+                    totalNodes: nodes.size,
+                    totalConnections: connections.length
+                },
+                nodes: {},
+                connections: connections,
+                startNode: findStartNode()
+            };
+            
+            nodes.forEach((nodeData, nodeId) => {
+                storyData.nodes[nodeId] = {
+                    type: nodeData.type,
+                    title: nodeData.title,
+                    content: nodeData.content,
+                    character: nodeData.character || null,
+                    choices: nodeData.choices || [],
+                    condition: nodeData.condition || null,
+                    variables: nodeData.variables || {},
+                    position: {
+                        x: nodeData.x,
+                        y: nodeData.y
+                    }
+                };
+            });
+            
+            return storyData;
+        }
+
+        function findStartNode() {
+            for (let [nodeId, nodeData] of nodes) {
+                if (nodeData.type === 'start') {
+                    return nodeId;
+                }
+            }
+            return null;
+        }
+
+        function downloadJSON() {
+            const storyData = generateStoryJSON();
+            const dataStr = JSON.stringify(storyData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'story-export.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            closeModal();
+            showNotification('Story exported successfully!', 'success');
+        }
+
+        function copyToClipboard() {
+            const storyData = generateStoryJSON();
+            const dataStr = JSON.stringify(storyData, null, 2);
+            
+            navigator.clipboard.writeText(dataStr).then(() => {
+                showNotification('JSON copied to clipboard!', 'success');
+                closeModal();
+            }).catch(() => {
+                showNotification('Failed to copy to clipboard!', 'error');
+            });
+        }
+
+        function showPreview() {
+            const startNodeId = findStartNode();
+            if (!startNodeId) {
+                showNotification('No start node found! Please add a start node to preview the story.', 'error');
+                return;
+            }
+            
+            const modalBody = document.getElementById('modal-body');
+            modalBody.innerHTML = `
+                <div id="story-preview">
+                    <div id="story-content" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; min-height: 200px;">
+                        <div id="story-text"></div>
+                        <div id="story-choices" style="margin-top: 15px;"></div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="restartPreview()">🔄 Restart</button>
+                        <button class="btn btn-secondary" onclick="showStoryMap()">🗺️ Story Map</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-title').textContent = '👁️ Story Preview';
+            document.getElementById('modal').style.display = 'flex';
+            
+            currentPreviewNode = startNodeId;
+            updatePreview();
+        }
+
+        let currentPreviewNode = null;
+
+        function updatePreview() {
+            if (!currentPreviewNode || !nodes.has(currentPreviewNode)) {
+                document.getElementById('story-text').innerHTML = '<p style="color: #e74c3c;">Story node not found!</p>';
+                return;
+            }
+            
+            const nodeData = nodes.get(currentPreviewNode);
+            const storyTextDiv = document.getElementById('story-text');
+            const storyChoicesDiv = document.getElementById('story-choices');
+            
+            // Display node content
+            let displayText = '';
+            if (nodeData.character && nodeData.type === 'dialogue') {
+                displayText += `<strong>${nodeData.character}:</strong><br>`;
+            }
+            displayText += nodeData.content;
+            
+            if (nodeData.type === 'condition') {
+                displayText += `<br><small style="color: #666;">Condition: ${nodeData.condition}</small>`;
+            }
+            
+            storyTextDiv.innerHTML = `<p>${displayText}</p>`;
+            
+            // Handle choices/navigation
+            storyChoicesDiv.innerHTML = '';
+            
+            if (nodeData.type === 'end') {
+                storyChoicesDiv.innerHTML = '<p style="text-align: center; color: #27ae60; font-weight: bold;">🏁 THE END</p>';
+            } else {
+                const connectedNodes = connections.filter(conn => conn.from === currentPreviewNode);
+                
+                if (nodeData.type === 'choice' && nodeData.choices.length > 0) {
+                    nodeData.choices.forEach((choice, index) => {
+                        if (connectedNodes[index]) {
+                            const button = document.createElement('button');
+                            button.className = 'btn btn-secondary';
+                            button.style.display = 'block';
+                            button.style.width = '100%';
+                            button.style.margin = '5px 0';
+                            button.style.textAlign = 'left';
+                            button.innerHTML = choice;
+                            button.onclick = () => navigateToNode(connectedNodes[index].to);
+                            storyChoicesDiv.appendChild(button);
+                        }
+                    });
+                } else if (connectedNodes.length > 0) {
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-primary';
+                    button.innerHTML = '➡️ Continue';
+                    button.onclick = () => navigateToNode(connectedNodes[0].to);
+                    storyChoicesDiv.appendChild(button);
+                }
+                
+                if (connectedNodes.length === 0 && nodeData.type !== 'end') {
+                    storyChoicesDiv.innerHTML = '<p style="color: #e67e22;">⚠️ No connections from this node!</p>';
+                }
+            }
+        }
+
+        function navigateToNode(nodeId) {
+            currentPreviewNode = nodeId;
+            updatePreview();
+        }
+
+        function restartPreview() {
+            currentPreviewNode = findStartNode();
+            updatePreview();
+        }
+
+        function showStoryMap() {
+            const modalBody = document.getElementById('modal-body');
+            const storyData = generateStoryJSON();
+            
+            modalBody.innerHTML = `
+                <h3>🗺️ Story Structure Analysis</h3>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h4>Statistics:</h4>
+                    <ul style="margin: 10px 0;">
+                        <li><strong>Total Nodes:</strong> ${nodes.size}</li>
+                        <li><strong>Total Connections:</strong> ${connections.length}</li>
+                        <li><strong>Start Nodes:</strong> ${Array.from(nodes.values()).filter(n => n.type === 'start').length}</li>
+                        <li><strong>End Nodes:</strong> ${Array.from(nodes.values()).filter(n => n.type === 'end').length}</li>
+                        <li><strong>Choice Points:</strong> ${Array.from(nodes.values()).filter(n => n.type === 'choice').length}</li>
+                        <li><strong>Dialogue Nodes:</strong> ${Array.from(nodes.values()).filter(n => n.type === 'dialogue').length}</li>
+                    </ul>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h4>Story Flow:</h4>
+                    <div id="flow-analysis" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                        ${generateFlowAnalysis()}
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateFlowAnalysis() {
+            const startNode = findStartNode();
+            if (!startNode) return '<p>No start node found!</p>';
+            
+            const visited = new Set();
+            const paths = [];
+            
+            function traversePath(nodeId, path = []) {
+                if (visited.has(nodeId) || path.length > 20) return;
+                
+                const nodeData = nodes.get(nodeId);
+                if (!nodeData) return;
+                
+                visited.add(nodeId);
+                path.push(`${nodeData.type.toUpperCase()}: ${nodeData.title}`);
+                
+                const outConnections = connections.filter(conn => conn.from === nodeId);
+                
+                if (outConnections.length === 0 || nodeData.type === 'end') {
+                    paths.push([...path]);
+                } else {
+                    outConnections.forEach(conn => {
+                        traversePath(conn.to, [...path]);
+                    });
+                }
+            }
+            
+            traversePath(startNode);
+            
+            let analysis = '';
+            paths.forEach((path, index) => {
+                analysis += `<div style="margin: 10px 0; padding: 10px; border-left: 3px solid #3498db;">`;
+                analysis += `<strong>Path ${index + 1}:</strong><br>`;
+                analysis += path.map(step => `  → ${step}`).join('<br>');
+                analysis += '</div>';
+            });
+            
+            return analysis || '<p>No complete paths found!</p>';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                z-index: 3000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out forwards';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize the editor when the page loads
+        document.addEventListener('DOMContentLoaded', initializeEditor);
+
+    </script>
+</body>
+</html>
