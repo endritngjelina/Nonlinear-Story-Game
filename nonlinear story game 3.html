@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryGraph Pro - Nonlinear Story Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main-editor {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: calc(100% - 60px);
+            overflow: hidden;
+        }
+
+        .canvas {
+            position: absolute;
+            width: 5000px;
+            height: 5000px;
+            background-image: 
+                radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.1) 1px, transparent 0),
+                radial-gradient(circle at 60px 60px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+            background-size: 80px 80px;
+            cursor: grab;
+        }
+
+        .canvas.dragging {
+            cursor: grabbing;
+        }
+
+        .node {
+            position: absolute;
+            min-width: 250px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .node.selected {
+            border: 2px solid #4facfe;
+            box-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
+        }
+
+        .node-header {
+            padding: 15px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-type {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .node-content {
+            padding: 20px;
+        }
+
+        .node-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .node-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 15px;
+            min-height: 60px;
+            resize: vertical;
+            border: none;
+            background: transparent;
+            width: 100%;
+        }
+
+        .node-text:focus {
+            outline: none;
+            color: #333;
+        }
+
+        .choices-container {
+            margin-top: 15px;
+        }
+
+        .choice {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(79, 172, 254, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(79, 172, 254, 0.2);
+        }
+
+        .choice input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 5px;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .choice input:focus {
+            outline: none;
+        }
+
+        .choice-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-path {
+            stroke: #4facfe;
+            stroke-width: 3;
+            fill: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .connection-arrow {
+            fill: #4facfe;
+        }
+
+        .sidebar h2 {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-section h3 {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .project-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .project-title {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .project-stats {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .code-output {
+            background: #1a1a1a;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview-node {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4facfe;
+        }
+
+        .preview-choices {
+            margin-top: 10px;
+        }
+
+        .preview-choice {
+            padding: 8px 12px;
+            background: #4facfe;
+            color: white;
+            border-radius: 4px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preview-choice:hover {
+            background: #357abd;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .connection-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #4facfe;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: crosshair;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .connection-handle:hover {
+            transform: translateY(-50%) scale(1.2);
+            box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+        }
+
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .node {
+            animation: slideIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="project-info">
+                <div class="project-title">Untitled Story</div>
+                <div class="project-stats">
+                    <div>Nodes: <span id="node-count">0</span></div>
+                    <div>Connections: <span id="connection-count">0</span></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Create Nodes</h3>
+                <button class="sidebar-btn" onclick="createNode('story')">📖 Story Node</button>
+                <button class="sidebar-btn" onclick="createNode('choice')">🔀 Choice Node</button>
+                <button class="sidebar-btn" onclick="createNode('condition')">⚡ Condition Node</button>
+                <button class="sidebar-btn" onclick="createNode('ending')">🎯 Ending Node</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Export & Preview</h3>
+                <button class="sidebar-btn" onclick="exportToJSON()">💾 Export JSON</button>
+                <button class="sidebar-btn" onclick="showPreview()">👁️ Preview Story</button>
+                <button class="sidebar-btn" onclick="loadSample()">🎲 Load Sample</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Tools</h3>
+                <button class="sidebar-btn" onclick="autoLayout()">🎨 Auto Layout</button>
+                <button class="sidebar-btn" onclick="clearCanvas()">🗑️ Clear All</button>
+                <button class="sidebar-btn" onclick="validateStory()">✅ Validate</button>
+            </div>
+        </div>
+
+        <div class="main-editor">
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" onclick="zoomIn()">🔍+ Zoom In</button>
+                    <button class="toolbar-btn" onclick="zoomOut()">🔍- Zoom Out</button>
+                    <button class="toolbar-btn" onclick="resetView()">🎯 Reset View</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" onclick="undo()">↶ Undo</button>
+                    <button class="toolbar-btn" onclick="redo()">↷ Redo</button>
+                </div>
+            </div>
+
+            <div class="canvas-container" id="canvas-container">
+                <div class="canvas" id="canvas"></div>
+                <svg class="connection-line" id="connection-svg" width="5000" height="5000">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" class="connection-arrow" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+
+            <div class="minimap" id="minimap"></div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <h2>📄 Export JSON</h2>
+            <p>Copy this JSON data to use in your game engine or save to a file:</p>
+            <div class="code-output" id="json-output"></div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-secondary" onclick="closeModal('export-modal')">Close</button>
+                <button class="btn btn-primary" onclick="copyToClipboard()">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal" id="preview-modal">
+        <div class="modal-content">
+            <h2>👁️ Story Preview</h2>
+            <div class="preview-container" id="preview-content"></div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-secondary" onclick="closeModal('preview-modal')">Close</button>
+                <button class="btn btn-primary" onclick="restartPreview()">Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class StoryEditor {
+            constructor() {
+                this.nodes = new Map();
+                this.connections = [];
+                this.selectedNode = null;
+                this.dragOffset = { x: 0, y: 0 };
+                this.canvasOffset = { x: 2500, y: 2500 };
+                this.zoom = 1;
+                this.nodeCounter = 0;
+                this.connectionMode = false;
+                this.connectionSource = null;
+                this.history = [];
+                this.historyIndex = -1;
+
+                this.initializeCanvas();
+                this.setupEventListeners();
+                this.saveState();
+            }
+
+            initializeCanvas() {
+                const canvas = document.getElementById('canvas');
+                const container = document.getElementById('canvas-container');
+                
+                canvas.style.transform = `translate(${-this.canvasOffset.x}px, ${-this.canvasOffset.y}px) scale(${this.zoom})`;
+            }
+
+            setupEventListeners() {
+                const canvas = document.getElementById('canvas');
+                const container = document.getElementById('canvas-container');
+
+                // Canvas panning
+                let isPanning = false;
+                let lastPanPoint = { x: 0, y: 0 };
+
+                container.addEventListener('mousedown', (e) => {
+                    if (e.target === canvas || e.target === container) {
+                        isPanning = true;
+                        lastPanPoint = { x: e.clientX, y: e.clientY };
+                        canvas.classList.add('dragging');
+                    }
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isPanning) {
+                        const deltaX = e.clientX - lastPanPoint.x;
+                        const deltaY = e.clientY - lastPanPoint.y;
+                        
+                        this.canvasOffset.x -= deltaX / this.zoom;
+                        this.canvasOffset.y -= deltaY / this.zoom;
+                        
+                        this.updateCanvasTransform();
+                        lastPanPoint = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isPanning = false;
+                    canvas.classList.remove('dragging');
+                });
+
+                // Double click to create node
+                container.addEventListener('dblclick', (e) => {
+                    if (e.target === canvas || e.target === container) {
+                        const rect = container.getBoundingClientRect();
+                        const x = (e.clientX - rect.left + this.canvasOffset.x) / this.zoom;
+                        const y = (e.clientY - rect.top + this.canvasOffset.y) / this.zoom;
+                        this.createNode('story', x, y);
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch(e.key) {
+                            case 'z':
+                                e.preventDefault();
+                                this.undo();
+                                break;
+                            case 'y':
+                                e.preventDefault();
+                                this.redo();
+                                break;
+                            case 's':
+                                e.preventDefault();
+                                this.exportToJSON();
+                                break;
+                        }
+                    }
+                    
+                    if (e.key === 'Delete' && this.selectedNode) {
+                        this.deleteNode(this.selectedNode);
+                    }
+                });
+            }
+
+            updateCanvasTransform() {
+                const canvas = document.getElementById('canvas');
+                canvas.style.transform = `translate(${-this.canvasOffset.x}px, ${-this.canvasOffset.y}px) scale(${this.zoom})`;
+                this.updateConnections();
+            }
+
+            createNode(type, x = null, y = null) {
+                const nodeId = `node-${++this.nodeCounter}`;
+                
+                if (x === null) {
+                    x = 200 + (this.nodeCounter * 50) % 800;
+                    y = 200 + Math.floor((this.nodeCounter * 50) / 800) * 200;
+                }
+
+                const nodeData = {
+                    id: nodeId,
+                    type: type,
+                    title: this.getDefaultTitle(type),
+                    content: this.getDefaultContent(type),
+                    choices: type === 'choice' ? ['Option 1', 'Option 2'] : [],
+                    condition: type === 'condition' ? 'variable == value' : '',
+                    x: x,
+                    y: y,
+                    connections: []
+                };
+
+                this.nodes.set(nodeId, nodeData);
+                this.renderNode(nodeData);
+                this.updateStats();
+                this.saveState();
+
+                return nodeId;
+            }
+
+            getDefaultTitle(type) {
+                const titles = {
+                    story: 'Story Passage',
+                    choice: 'Decision Point',
+                    condition: 'Conditional Branch',
+                    ending: 'Story Ending'
+                };
+                return titles[type] || 'New Node';
+            }
+
+            getDefaultContent(type) {
+                const content = {
+                    story: 'Describe what happens in this part of your story...',
+                    choice: 'Present a decision to the player...',
+                    condition: 'Check game state and branch accordingly...',
+                    ending: 'Conclude your story here...'
+                };
+                return content[type] || 'Enter content...';
+            }
+
+            renderNode(nodeData) {
+                const canvas = document.getElementById('canvas');
+                const nodeElement = document.createElement('div');
+                nodeElement.className = 'node';
+                nodeElement.id = nodeData.id;
+                nodeElement.style.left = nodeData.x + 'px';
+                nodeElement.style.top = nodeData.y + 'px';
+
+                const headerColor = this.getNodeColor(nodeData.type);
+                
+                nodeElement.innerHTML = `
+                    <div class="node-header" style="background: ${headerColor}">
+                        <div>
+                            <div class="node-title">${nodeData.title}</div>
+                            <div class="node-type">${nodeData.type}</div>
+                        </div>
+                        <button class="btn btn-danger" onclick="editor.deleteNode('${nodeData.id}')" style="padding: 5px 8px;">×</button>
+                    </div>
+                    <div class="node-content">
+                        ${this.renderNodeContent(nodeData)}
+                    </div>
+                    <div class="connection-handle" onclick="editor.startConnection('${nodeData.id}')"></div>
+                `;
+
+                canvas.appendChild(nodeElement);
+                this.makeNodeDraggable(nodeElement, nodeData);
+                this.setupNodeEvents(nodeElement, nodeData);
+            }
+
+            getNodeColor(type) {
+                const colors = {
+                    story: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    choice: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                    condition: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                    ending: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+                };
+                return colors[type] || colors.story;
+            }
+
+            renderNodeContent(nodeData) {
+                let content = `
+                    <textarea class="node-text" placeholder="Enter node content..." 
+                              onchange="editor.updateNodeContent('${nodeData.id}', 'content', this.value)">${nodeData.content}</textarea>
+                `;
+
+                if (nodeData.type === 'choice') {
+                    content += `<div class="choices-container">`;
+                    nodeData.choices.forEach((choice, index) => {
+                        content += `
+                            <div class="choice">
+                                <input type="text" value="${choice}" 
+                                       onchange="editor.updateChoice('${nodeData.id}', ${index}, this.value)"
+                                       placeholder="Choice text...">
+                                <div class="choice-actions">
+                                    <button class="btn btn-danger" onclick="editor.removeChoice('${nodeData.id}', ${index})">−</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    content += `
+                        <button class="btn btn-secondary" onclick="editor.addChoice('${nodeData.id}')">+ Add Choice</button>
+                    </div>`;
+                }
+
+                if (nodeData.type === 'condition') {
+                    content += `
+                        <div style="margin-top: 15px;">
+                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 5px;">Condition:</label>
+                            <input type="text" value="${nodeData.condition}" 
+                                   onchange="editor.updateNodeContent('${nodeData.id}', 'condition', this.value)"
+                                   placeholder="e.g., health > 50"
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    `;
+                }
+
+                return content;
+            }
+
+            makeNodeDraggable(element, nodeData) {
+                let isDragging = false;
+                let dragStart = { x: 0, y: 0 };
+
+                element.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.btn') || e.target.closest('input') || e.target.closest('textarea')) {
+                        return;
+                    }
+                    
+                    isDragging = true;
+                    this.selectedNode = nodeData.id;
+                    this.updateNodeSelection();
+                    
+                    const rect = element.getBoundingClientRect();
+                    const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+                    
+                    dragStart.x = (e.clientX - containerRect.left) / this.zoom - nodeData.x + this.canvasOffset.x;
+                    dragStart.y = (e.clientY - containerRect.top) / this.zoom - nodeData.y + this.canvasOffset.y;
+                    
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging && this.selectedNode === nodeData.id) {
+                        const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+                        
+                        nodeData.x = (e.clientX - containerRect.left) / this.zoom + this.canvasOffset.x - dragStart.x;
+                        nodeData.y = (e.clientY - containerRect.top) / this.zoom + this.canvasOffset.y - dragStart.y;
+                        
+                        element.style.left = nodeData.x + 'px';
+                        element.style.top = nodeData.y + 'px';
+                        
+                        this.updateConnections();
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        this.saveState();
+                    }
+                });
+            }
+
+            setupNodeEvents(element, nodeData) {
+                element.addEventListener('click', (e) => {
+                    if (!e.target.closest('.btn') && !e.target.closest('input') && !e.target.closest('textarea')) {
+                        this.selectedNode = nodeData.id;
+                        this.updateNodeSelection();
+                    }
+                });
+            }
+
+            updateNodeSelection() {
+                document.querySelectorAll('.node').forEach(node => {
+                    node.classList.remove('selected');
+                });
+                
+                if (this.selectedNode) {
+                    const selectedElement = document.getElementById(this.selectedNode);
+                    if (selectedElement) {
+                        selectedElement.classList.add('selected');
+                    }
+                }
+            }
+
+            startConnection(nodeId) {
+                if (this.connectionMode) {
+                    // Complete connection
+                    if (this.connectionSource !== nodeId) {
+                        this.createConnection(this.connectionSource, nodeId);
+                    }
+                    this.connectionMode = false;
+                    this.connectionSource = null;
+                } else {
+                    // Start connection
+                    this.connectionMode = true;
+                    this.connectionSource = nodeId;
+                }
+            }
+
+            createConnection(fromId, toId) {
+                const connection = {
+                    id: `conn-${Date.now()}`,
+                    from: fromId,
+                    to: toId
+                };
+
+                this.connections.push(connection);
+                
+                const fromNode = this.nodes.get(fromId);
+                if (fromNode) {
+                    fromNode.connections.push(toId);
+                }
+
+                this.updateConnections();
+                this.updateStats();
+                this.saveState();
+            }
+
+            updateConnections() {
+                const svg = document.getElementById('connection-svg');
+                
+                // Clear existing paths
+                const existingPaths = svg.querySelectorAll('.connection-path');
+                existingPaths.forEach(path => path.remove());
+
+                this.connections.forEach(connection => {
+                    const fromNode = this.nodes.get(connection.from);
+                    const toNode = this.nodes.get(connection.to);
+                    
+                    if (fromNode && toNode) {
+                        const path = this.createConnectionPath(fromNode, toNode);
+                        svg.appendChild(path);
+                    }
+                });
+            }
+
+            createConnectionPath(fromNode, toNode) {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.classList.add('connection-path');
+                
+                const startX = fromNode.x + 250;
+                const startY = fromNode.y + 75;
+                const endX = toNode.x;
+                const endY = toNode.y + 75;
+                
+                const controlX1 = startX + 100;
+                const controlY1 = startY;
+                const controlX2 = endX - 100;
+                const controlY2 = endY;
+                
+                const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
+                path.setAttribute('d', pathData);
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+                
+                return path;
+            }
+
+            updateNodeContent(nodeId, field, value) {
+                const node = this.nodes.get(nodeId);
+                if (node) {
+                    node[field] = value;
+                    this.saveState();
+                }
+            }
+
+            addChoice(nodeId) {
+                const node = this.nodes.get(nodeId);
+                if (node) {
+                    node.choices.push(`Option ${node.choices.length + 1}`);
+                    this.refreshNode(nodeId);
+                    this.saveState();
+                }
+            }
+
+            updateChoice(nodeId, index, value) {
+                const node = this.nodes.get(nodeId);
+                if (node && node.choices[index] !== undefined) {
+                    node.choices[index] = value;
+                    this.saveState();
+                }
+            }
+
+            removeChoice(nodeId, index) {
+                const node = this.nodes.get(nodeId);
+                if (node && node.choices.length > 1) {
+                    node.choices.splice(index, 1);
+                    this.refreshNode(nodeId);
+                    this.saveState();
+                }
+            }
+
+            refreshNode(nodeId) {
+                const element = document.getElementById(nodeId);
+                const node = this.nodes.get(nodeId);
+                if (element && node) {
+                    const content = element.querySelector('.node-content');
+                    content.innerHTML = this.renderNodeContent(node);
+                }
+            }
+
+            deleteNode(nodeId) {
+                // Remove connections
+                this.connections = this.connections.filter(conn => 
+                    conn.from !== nodeId && conn.to !== nodeId
+                );
+                
+                // Remove from other nodes' connections
+                this.nodes.forEach(node => {
+                    node.connections = node.connections.filter(id => id !== nodeId);
+                });
+                
+                // Remove node
+                this.nodes.delete(nodeId);
+                
+                // Remove DOM element
+                const element = document.getElementById(nodeId);
+                if (element) {
+                    element.remove();
+                }
+                
+                // Clear selection if this was selected
+                if (this.selectedNode === nodeId) {
+                    this.selectedNode = null;
+                }
+                
+                this.updateConnections();
+                this.updateStats();
+                this.saveState();
+            }
+
+            updateStats() {
+                document.getElementById('node-count').textContent = this.nodes.size;
+                document.getElementById('connection-count').textContent = this.connections.length;
+            }
+
+            exportToJSON() {
+                const exportData = {
+                    metadata: {
+                        title: "Untitled Story",
+                        created: new Date().toISOString(),
+                        version: "1.0",
+                        nodeCount: this.nodes.size,
+                        connectionCount: this.connections.length
+                    },
+                    nodes: Array.from(this.nodes.values()),
+                    connections: this.connections
+                };
+                
+                const jsonString = JSON.stringify(exportData, null, 2);
+                document.getElementById('json-output').textContent = jsonString;
+                document.getElementById('export-modal').classList.add('active');
+            }
+
+            showPreview() {
+                const startNode = this.findStartNode();
+                if (!startNode) {
+                    alert('No story nodes found! Create some nodes first.');
+                    return;
+                }
+                
+                this.currentPreviewNode = startNode.id;
+                this.renderPreview();
+                document.getElementById('preview-modal').classList.add('active');
+            }
+
+            findStartNode() {
+                // Find node with no incoming connections
+                const hasIncoming = new Set(this.connections.map(conn => conn.to));
+                const startNodes = Array.from(this.nodes.values()).filter(node => 
+                    !hasIncoming.has(node.id)
+                );
+                return startNodes[0] || Array.from(this.nodes.values())[0];
+            }
+
+            renderPreview() {
+                const node = this.nodes.get(this.currentPreviewNode);
+                if (!node) return;
+                
+                const container = document.getElementById('preview-content');
+                
+                let html = `
+                    <div class="preview-node">
+                        <h3>${node.title}</h3>
+                        <p>${node.content}</p>
+                `;
+                
+                if (node.type === 'choice' && node.choices.length > 0) {
+                    html += '<div class="preview-choices">';
+                    node.connections.forEach((connectedId, index) => {
+                        const choiceText = node.choices[index] || `Option ${index + 1}`;
+                        html += `<div class="preview-choice" onclick="editor.navigateToNode('${connectedId}')">${choiceText}</div>`;
+                    });
+                    html += '</div>';
+                } else if (node.connections.length > 0) {
+                    html += `<div class="preview-choices">
+                        <div class="preview-choice" onclick="editor.navigateToNode('${node.connections[0]}')">Continue</div>
+                    </div>`;
+                }
+                
+                if (node.type === 'ending' || node.connections.length === 0) {
+                    html += '<div style="margin-top: 15px; font-style: italic; color: #666;">— The End —</div>';
+                }
+                
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            navigateToNode(nodeId) {
+                this.currentPreviewNode = nodeId;
+                this.renderPreview();
+            }
+
+            restartPreview() {
+                const startNode = this.findStartNode();
+                if (startNode) {
+                    this.currentPreviewNode = startNode.id;
+                    this.renderPreview();
+                }
+            }
+
+            loadSample() {
+                this.clearCanvas();
+                
+                // Create sample story
+                const start = this.createNode('story', 100, 100);
+                this.updateNodeContent(start, 'title', 'The Mysterious Door');
+                this.updateNodeContent(start, 'content', 'You stand before an ancient wooden door covered in strange symbols. A cold wind whispers through the cracks.');
+                
+                const choice = this.createNode('choice', 400, 100);
+                this.updateNodeContent(choice, 'title', 'What do you do?');
+                this.updateNodeContent(choice, 'content', 'The door seems to pulse with an otherworldly energy.');
+                
+                const open = this.createNode('story', 700, 50);
+                this.updateNodeContent(open, 'title', 'You Open the Door');
+                this.updateNodeContent(open, 'content', 'The door creaks open revealing a spiral staircase descending into darkness. Strange glowing runes light your way.');
+                
+                const knock = this.createNode('story', 700, 150);
+                this.updateNodeContent(knock, 'title', 'You Knock');
+                this.updateNodeContent(knock, 'content', 'Your knocking echoes strangely. After a moment, you hear footsteps approaching from the other side.');
+                
+                const ending1 = this.createNode('ending', 1000, 50);
+                this.updateNodeContent(ending1, 'title', 'The Adventure Begins');
+                this.updateNodeContent(ending1, 'content', 'You descend into the unknown, your heart racing with excitement and fear. This is just the beginning of your journey.');
+                
+                const ending2 = this.createNode('ending', 1000, 150);
+                this.updateNodeContent(ending2, 'title', 'The Guardian Appears');
+                this.updateNodeContent(ending2, 'content', 'A hooded figure opens the door and nods knowingly. "We have been waiting for you," they say mysteriously.');
+                
+                // Update choice options
+                const choiceNode = this.nodes.get(choice);
+                choiceNode.choices = ['Open the door', 'Knock on the door'];
+                this.refreshNode(choice);
+                
+                // Create connections
+                this.createConnection(start, choice);
+                this.createConnection(choice, open);
+                this.createConnection(choice, knock);
+                this.createConnection(open, ending1);
+                this.createConnection(knock, ending2);
+                
+                this.updateStats();
+            }
+
+            autoLayout() {
+                const nodes = Array.from(this.nodes.values());
+                const startNode = this.findStartNode();
+                
+                if (!startNode) return;
+                
+                // Simple layered layout
+                const layers = this.calculateLayers(startNode);
+                const layerHeight = 200;
+                const nodeWidth = 300;
+                
+                layers.forEach((layer, layerIndex) => {
+                    const y = 100 + layerIndex * layerHeight;
+                    layer.forEach((node, nodeIndex) => {
+                        const x = 100 + nodeIndex * nodeWidth + (layerIndex % 2) * 150;
+                        node.x = x;
+                        node.y = y;
+                        
+                        const element = document.getElementById(node.id);
+                        if (element) {
+                            element.style.left = x + 'px';
+                            element.style.top = y + 'px';
+                        }
+                    });
+                });
+                
+                this.updateConnections();
+                this.saveState();
+            }
+
+            calculateLayers(startNode) {
+                const layers = [];
+                const visited = new Set();
+                const queue = [{ node: startNode, layer: 0 }];
+                
+                while (queue.length > 0) {
+                    const { node, layer } = queue.shift();
+                    
+                    if (visited.has(node.id)) continue;
+                    visited.add(node.id);
+                    
+                    if (!layers[layer]) layers[layer] = [];
+                    layers[layer].push(node);
+                    
+                    node.connections.forEach(connId => {
+                        const connectedNode = this.nodes.get(connId);
+                        if (connectedNode && !visited.has(connId)) {
+                            queue.push({ node: connectedNode, layer: layer + 1 });
+                        }
+                    });
+                }
+                
+                return layers;
+            }
+
+            clearCanvas() {
+                this.nodes.clear();
+                this.connections = [];
+                this.selectedNode = null;
+                this.nodeCounter = 0;
+                
+                document.getElementById('canvas').innerHTML = '<svg class="connection-line" id="connection-svg" width="5000" height="5000"><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" class="connection-arrow" /></marker></defs></svg>';
+                
+                this.updateStats();
+                this.saveState();
+            }
+
+            validateStory() {
+                const issues = [];
+                
+                // Check for orphaned nodes
+                const hasIncoming = new Set(this.connections.map(conn => conn.to));
+                const hasOutgoing = new Set(this.connections.map(conn => conn.from));
+                
+                this.nodes.forEach(node => {
+                    if (!hasIncoming.has(node.id) && this.connections.length > 0) {
+                        if (node.id !== this.findStartNode()?.id) {
+                            issues.push(`Orphaned node: ${node.title}`);
+                        }
+                    }
+                    
+                    if (!hasOutgoing.has(node.id) && node.type !== 'ending') {
+                        issues.push(`Dead end: ${node.title} (consider making it an ending)`);
+                    }
+                    
+                    if (node.type === 'choice' && node.choices.length !== node.connections.length) {
+                        issues.push(`Choice mismatch: ${node.title} has ${node.choices.length} choices but ${node.connections.length} connections`);
+                    }
+                });
+                
+                if (issues.length === 0) {
+                    alert('✅ Story validation passed! No issues found.');
+                } else {
+                    alert('⚠️ Validation issues found:\n\n' + issues.join('\n'));
+                }
+            }
+
+            zoomIn() {
+                this.zoom = Math.min(this.zoom * 1.2, 3);
+                this.updateCanvasTransform();
+            }
+
+            zoomOut() {
+                this.zoom = Math.max(this.zoom / 1.2, 0.3);
+                this.updateCanvasTransform();
+            }
+
+            resetView() {
+                this.zoom = 1;
+                this.canvasOffset = { x: 2500, y: 2500 };
+                this.updateCanvasTransform();
+            }
+
+            saveState() {
+                const state = {
+                    nodes: Array.from(this.nodes.entries()),
+                    connections: [...this.connections],
+                    nodeCounter: this.nodeCounter
+                };
+                
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(JSON.stringify(state));
+                this.historyIndex = this.history.length - 1;
+                
+                if (this.history.length > 20) {
+                    this.history.shift();
+                    this.historyIndex--;
+                }
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.loadState(this.history[this.historyIndex]);
+                }
+            }
+
+            loadState(stateString) {
+                const state = JSON.parse(stateString);
+                
+                this.nodes = new Map(state.nodes);
+                this.connections = state.connections;
+                this.nodeCounter = state.nodeCounter;
+                this.selectedNode = null;
+                
+                // Re-render all nodes
+                const canvas = document.getElementById('canvas');
+                canvas.innerHTML = '<svg class="connection-line" id="connection-svg" width="5000" height="5000"><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" class="connection-arrow" /></marker></defs></svg>';
+                
+                this.nodes.forEach(node => {
+                    this.renderNode(node);
+                });
+                
+                this.updateConnections();
+                this.updateStats();
+            }
+        }
+
+        // Global functions for HTML onclick handlers
+        let editor;
+
+        function createNode(type) {
+            editor.createNode(type);
+        }
+
+        function exportToJSON() {
+            editor.exportToJSON();
+        }
+
+        function showPreview() {
+            editor.showPreview();
+        }
+
+        function loadSample() {
+            editor.loadSample();
+        }
+
+        function autoLayout() {
+            editor.autoLayout();
+        }
+
+        function clearCanvas() {
+            if (confirm('Are you sure you want to clear all nodes? This cannot be undone.')) {
+                editor.clearCanvas();
+            }
+        }
+
+        function validateStory() {
+            editor.validateStory();
+        }
+
+        function zoomIn() {
+            editor.zoomIn();
+        }
+
+        function zoomOut() {
+            editor.zoomOut();
+        }
+
+        function resetView() {
+            editor.resetView();
+        }
+
+        function undo() {
+            editor.undo();
+        }
+
+        function redo() {
+            editor.redo();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function copyToClipboard() {
+            const output = document.getElementById('json-output');
+            navigator.clipboard.writeText(output.textContent).then(() => {
+                alert('JSON copied to clipboard!');
+            });
+        }
+
+        function restartPreview() {
+            editor.restartPreview();
+        }
+
+        // Initialize the editor
+        document.addEventListener('DOMContentLoaded', () => {
+            editor = new StoryEditor();
+        });
+    </script>
+</body>
+</html>
