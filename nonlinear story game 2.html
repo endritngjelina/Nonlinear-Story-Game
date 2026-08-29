@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryWeaver Pro - Nonlinear Story Game Editor</title>
+    <style>
+        :root {
+            --primary: #0066ff;
+            --secondary: #4285f4;
+            --accent: #ff6b35;
+            --surface: #1e1e1e;
+            --surface-light: #2d2d2d;
+            --surface-lighter: #404040;
+            --text: #ffffff;
+            --text-secondary: #b3b3b3;
+            --border: #404040;
+            --success: #00d4aa;
+            --warning: #ffb84d;
+            --error: #ff4757;
+            --shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            opacity: 0.1;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 40px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            margin-left: auto;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: var(--surface-lighter);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .btn.primary {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--surface);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-types {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .node-type {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: grab;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .node-type::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+
+        .node-type:hover {
+            background: var(--surface-lighter);
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .node-type:hover::before {
+            transform: scaleY(1);
+        }
+
+        .node-type:active {
+            cursor: grabbing;
+        }
+
+        .node-type-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+
+        .node-type-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Canvas */
+        .canvas-container {
+            background: radial-gradient(circle at 50% 50%, #262626 0%, #1a1a1a 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas {
+            width: 5000px;
+            height: 5000px;
+            position: absolute;
+            background-image: 
+                radial-gradient(circle, #333 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0;
+            opacity: 0.3;
+        }
+
+        .viewport {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+        }
+
+        .viewport.panning {
+            cursor: grabbing;
+        }
+
+        /* Node */
+        .node {
+            position: absolute;
+            min-width: 200px;
+            background: var(--surface-light);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .node:hover {
+            border-color: var(--primary);
+            box-shadow: 0 6px 24px rgba(0, 102, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .node.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3);
+        }
+
+        .node-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(45deg, var(--surface-lighter), var(--surface-light));
+            border-radius: 10px 10px 0 0;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .node-type-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .node-title {
+            font-weight: 600;
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .node-title:focus {
+            outline: none;
+        }
+
+        .node-content {
+            padding: 16px;
+        }
+
+        .node-textarea {
+            width: 100%;
+            min-height: 80px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 12px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .node-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.2);
+        }
+
+        .choices {
+            margin-top: 12px;
+        }
+
+        .choice {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .choice:hover {
+            border-color: var(--primary);
+            background: var(--surface-lighter);
+        }
+
+        .choice-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .choice-input:focus {
+            outline: none;
+        }
+
+        .remove-choice {
+            background: var(--error);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+        }
+
+        .remove-choice:hover {
+            opacity: 1;
+        }
+
+        .add-choice {
+            background: var(--success);
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 8px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .add-choice:hover {
+            background: #00c29a;
+            transform: translateY(-1px);
+        }
+
+        /* Properties Panel */
+        .properties {
+            background: var(--surface);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid var(--border);
+        }
+
+        .properties h3 {
+            margin-bottom: 20px;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .property-group {
+            margin-bottom: 24px;
+        }
+
+        .property-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .property-input {
+            width: 100%;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .property-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.2);
+        }
+
+        .property-select {
+            width: 100%;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 10px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Connection Lines */
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: var(--primary);
+            stroke-width: 3;
+            fill: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 102, 255, 0.3));
+            opacity: 0.8;
+        }
+
+        .connection-line.animated {
+            stroke-dasharray: 10 5;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -15;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            grid-column: 1 / -1;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .zoom-btn:hover {
+            background: var(--surface-lighter);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            margin: 20px;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 24px;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--surface-lighter);
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: var(--text);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .node {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 240px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px 1fr;
+            }
+            
+            .sidebar,
+            .properties {
+                display: none;
+            }
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            background: var(--surface);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-light);
+            z-index: 1001;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 0;
+            box-shadow: var(--shadow);
+            z-index: 1002;
+            min-width: 160px;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text);
+            transition: background 0.1s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: var(--surface-lighter);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">StoryWeaver Pro</div>
+            <div class="header-actions">
+                <button class="btn" onclick="newProject()">
+                    <span>📄</span> New
+                </button>
+                <button class="btn" onclick="saveProject()">
+                    <span>💾</span> Save
+                </button>
+                <button class="btn" onclick="loadProject()">
+                    <span>📂</span> Load
+                </button>
+                <button class="btn" onclick="exportJSON()">
+                    <span>📦</span> Export
+                </button>
+                <button class="btn primary" onclick="previewStory()">
+                    <span>▶️</span> Preview
+                </button>
+            </div>
+        </header>
+
+        <aside class="sidebar">
+            <div class="section">
+                <h3>Node Types</h3>
+                <div class="node-types">
+                    <div class="node-type" draggable="true" data-type="start">
+                        <div class="node-type-title">🚀 Start Node</div>
+                        <div class="node-type-desc">Beginning of your story</div>
+                    </div>
+                    <div class="node-type" draggable="true" data-type="dialogue">
+                        <div class="node-type-title">💬 Dialogue</div>
+                        <div class="node-type-desc">Character conversations with choices</div>
+                    </div>
+                    <div class="node-type" draggable="true" data-type="narrative">
+                        <div class="node-type-title">📖 Narrative</div>
+                        <div class="node-type-desc">Story text without choices</div>
+                    </div>
+                    <div class="node-type" draggable="true" data-type="condition">
+                        <div class="node-type-title">🔀 Condition</div>
+                        <div class="node-type-desc">Branching based on variables</div>
+                    </div>
+                    <div class="node-type" draggable="true" data-type="action">
+                        <div class="node-type-title">⚡ Action</div>
+                        <div class="node-type-desc">Modify game state/variables</div>
+                    </div>
+                    <div class="node-type" draggable="true" data-type="ending">
+                        <div class="node-type-title">🏁 Ending</div>
+                        <div class="node-type-desc">Story conclusion</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Project Stats</h3>
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                    <div>Nodes: <span id="nodeCount">0</span></div>
+                    <div>Connections: <span id="connectionCount">0</span></div>
+                    <div>Endings: <span id="endingCount">0</span></div>
+                    <div>Word Count: <span id="wordCount">0</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="canvas-container">
+            <div class="viewport" id="viewport">
+                <div class="canvas" id="canvas">
+                    <svg class="connections" id="connections"></svg>
+                </div>
+            </div>
+        </main>
+
+        <aside class="properties">
+            <h3>Node Properties</h3>
+            <div id="nodeProperties">
+                <p style="color: var(--text-secondary); font-style: italic;">Select a node to edit its properties</p>
+            </div>
+        </aside>
+
+        <footer class="footer">
+            <div>StoryWeaver Pro v1.0 | Professional Interactive Fiction Editor</div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+                <span id="zoomLevel">100%</span>
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="resetZoom()">Reset</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="duplicateNode()">
+            <span>📋</span> Duplicate
+        </div>
+        <div class="context-menu-item" onclick="deleteNode()">
+            <span>🗑️</span> Delete
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="addNote()">
+            <span>📝</span> Add Note
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Modal Title</div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content goes here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class StoryEditor {
+            constructor() {
+                this.nodes = new Map();
+                this.connections = new Map();
+                this.selectedNode = null;
+                this.nextNodeId = 1;
+                this.zoom = 1;
+                this.panX = 0;
+                this.panY = 0;
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.isDraggingNode = false;
+                this.draggedNode = null;
+                this.isConnecting = false;
+                this.connectionStart = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateStats();
+                this.createStartNode();
+            }
+
+            setupEventListeners() {
+                const viewport = document.getElementById('viewport');
+                const canvas = document.getElementById('canvas');
+
+                // Drag and drop for node creation
+                document.querySelectorAll('.node-type').forEach(nodeType => {
+                    nodeType.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', nodeType.dataset.type);
+                    });
+                });
+
+                viewport.addEventListener('dragover', (e) => e.preventDefault());
+                viewport.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const nodeType = e.dataTransfer.getData('text/plain');
+                    const rect = viewport.getBoundingClientRect();
+                    const x = (e.clientX - rect.left - this.panX) / this.zoom;
+                    const y = (e.clientY - rect.top - this.panY) / this.zoom;
+                    this.createNode(nodeType, x, y);
+                });
+
+                // Canvas panning
+                viewport.addEventListener('mousedown', (e) => {
+                    if (e.target === viewport || e.target === canvas) {
+                        this.isDragging = true;
+                        this.dragStartX = e.clientX - this.panX;
+                        this.dragStartY = e.clientY - this.panY;
+                        viewport.classList.add('panning');
+                        this.deselectNode();
+                    }
+                });
+
+                viewport.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        this.panX = e.clientX - this.dragStartX;
+                        this.panY = e.clientY - this.dragStartY;
+                        this.updateCanvasTransform();
+                    }
+                });
+
+                viewport.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                    viewport.classList.remove('panning');
+                });
+
+                // Zoom
+                viewport.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    this.zoom = Math.max(0.2, Math.min(3, this.zoom * delta));
+                    this.updateCanvasTransform();
+                    document.getElementById('zoomLevel').textContent = Math.round(this.zoom * 100) + '%';
+                });
+
+                // Context menu
+                viewport.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (e.target.closest('.node')) {
+                        this.showContextMenu(e.clientX, e.clientY, e.target.closest('.node'));
+                    }
+                });
+
+                document.addEventListener('click', () => {
+                    this.hideContextMenu();
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch (e.key) {
+                            case 's':
+                                e.preventDefault();
+                                this.saveProject();
+                                break;
+                            case 'z':
+                                e.preventDefault();
+                                // Undo functionality would go here
+                                break;
+                            case 'd':
+                                e.preventDefault();
+                                if (this.selectedNode) this.duplicateNode();
+                                break;
+                        }
+                    }
+                    if (e.key === 'Delete' && this.selectedNode) {
+                        this.deleteNode();
+                    }
+                });
+            }
+
+            createStartNode() {
+                this.createNode('start', 100, 100);
+            }
+
+            createNode(type, x, y) {
+                const nodeId = `node_${this.nextNodeId++}`;
+                const nodeData = {
+                    id: nodeId,
+                    type: type,
+                    x: x,
+                    y: y,
+                    title: this.getDefaultTitle(type),
+                    content: this.getDefaultContent(type),
+                    choices: type === 'dialogue' ? ['Continue...'] : [],
+                    connections: [],
+                    variables: {},
+                    conditions: []
+                };
+
+                this.nodes.set(nodeId, nodeData);
+                this.renderNode(nodeData);
+                this.updateStats();
+                return nodeId;
+            }
+
+            getDefaultTitle(type) {
+                const titles = {
+                    start: 'Story Beginning',
+                    dialogue: 'Character Dialogue',
+                    narrative: 'Story Text',
+                    condition: 'Condition Check',
+                    action: 'Action',
+                    ending: 'Story Ending'
+                };
+                return titles[type] || 'New Node';
+            }
+
+            getDefaultContent(type) {
+                const content = {
+                    start: 'Welcome to your interactive story! This is where your adventure begins.',
+                    dialogue: '"Hello there, traveler. What brings you to this place?"',
+                    narrative: 'You find yourself standing at a crossroads, unsure which path to take.',
+                    condition: 'Check if player has key item or met certain conditions.',
+                    action: 'Player gains experience points or new item.',
+                    ending: 'And so your story comes to an end. What choices led you here?'
+                };
+                return content[type] || '';
+            }
+
+            renderNode(nodeData) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.dataset.nodeId = nodeData.id;
+                node.style.left = nodeData.x + 'px';
+                node.style.top = nodeData.y + 'px';
+
+                const typeColors = {
+                    start: '#00d4aa',
+                    dialogue: '#4285f4',
+                    narrative: '#9c27b0',
+                    condition: '#ff9800',
+                    action: '#f44336',
+                    ending: '#607d8b'
+                };
+
+                node.innerHTML = `
+                    <div class="node-header">
+                        <div class="node-type-indicator" style="background: ${typeColors[nodeData.type]}"></div>
+                        <input type="text" class="node-title" value="${nodeData.title}" onchange="editor.updateNodeTitle('${nodeData.id}', this.value)">
+                        <button style="background: none; border: none; color: var(--text-secondary); cursor: pointer;" onclick="editor.deleteNode('${nodeData.id}')">×</button>
+                    </div>
+                    <div class="node-content">
+                        <textarea class="node-textarea" placeholder="Enter your story content..." onchange="editor.updateNodeContent('${nodeData.id}', this.value)">${nodeData.content}</textarea>
+                        ${this.renderNodeChoices(nodeData)}
+                    </div>
+                `;
+
+                // Make node draggable
+                this.makeNodeDraggable(node);
+                
+                // Make node selectable
+                node.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.selectNode(nodeData.id);
+                });
+
+                document.getElementById('canvas').appendChild(node);
+            }
+
+            renderNodeChoices(nodeData) {
+                if (nodeData.type !== 'dialogue' && nodeData.type !== 'condition') {
+                    return '';
+                }
+
+                let choicesHtml = '<div class="choices">';
+                
+                nodeData.choices.forEach((choice, index) => {
+                    choicesHtml += `
+                        <div class="choice">
+                            <input type="text" class="choice-input" value="${choice}" 
+                                   onchange="editor.updateChoice('${nodeData.id}', ${index}, this.value)"
+                                   placeholder="Enter choice text...">
+                            <button class="remove-choice" onclick="editor.removeChoice('${nodeData.id}', ${index})">×</button>
+                        </div>
+                    `;
+                });
+
+                choicesHtml += `
+                    <button class="add-choice" onclick="editor.addChoice('${nodeData.id}')">+ Add Choice</button>
+                </div>`;
+
+                return choicesHtml;
+            }
+
+            makeNodeDraggable(node) {
+                let isDragging = false;
+                let startX, startY, startNodeX, startNodeY;
+
+                const header = node.querySelector('.node-header');
+                
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('node-title') || e.target.tagName === 'BUTTON') return;
+                    
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    
+                    const nodeData = this.nodes.get(node.dataset.nodeId);
+                    startNodeX = nodeData.x;
+                    startNodeY = nodeData.y;
+                    
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                    
+                    e.preventDefault();
+                });
+
+                const onMouseMove = (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaX = (e.clientX - startX) / this.zoom;
+                    const deltaY = (e.clientY - startY) / this.zoom;
+                    
+                    const newX = startNodeX + deltaX;
+                    const newY = startNodeY + deltaY;
+                    
+                    node.style.left = newX + 'px';
+                    node.style.top = newY + 'px';
+                    
+                    const nodeData = this.nodes.get(node.dataset.nodeId);
+                    nodeData.x = newX;
+                    nodeData.y = newY;
+                    
+                    this.updateConnections();
+                };
+
+                const onMouseUp = () => {
+                    isDragging = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+            }
+
+            selectNode(nodeId) {
+                // Deselect previous node
+                document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+                
+                // Select new node
+                const nodeElement = document.querySelector(`[data-node-id="${nodeId}"]`);
+                if (nodeElement) {
+                    nodeElement.classList.add('selected');
+                    this.selectedNode = nodeId;
+                    this.showNodeProperties(nodeId);
+                }
+            }
+
+            deselectNode() {
+                document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+                this.selectedNode = null;
+                this.hideNodeProperties();
+            }
+
+            showNodeProperties(nodeId) {
+                const nodeData = this.nodes.get(nodeId);
+                const propertiesPanel = document.getElementById('nodeProperties');
+                
+                propertiesPanel.innerHTML = `
+                    <div class="property-group">
+                        <label class="property-label">Node Type</label>
+                        <select class="property-select" onchange="editor.changeNodeType('${nodeId}', this.value)">
+                            <option value="start" ${nodeData.type === 'start' ? 'selected' : ''}>Start Node</option>
+                            <option value="dialogue" ${nodeData.type === 'dialogue' ? 'selected' : ''}>Dialogue</option>
+                            <option value="narrative" ${nodeData.type === 'narrative' ? 'selected' : ''}>Narrative</option>
+                            <option value="condition" ${nodeData.type === 'condition' ? 'selected' : ''}>Condition</option>
+                            <option value="action" ${nodeData.type === 'action' ? 'selected' : ''}>Action</option>
+                            <option value="ending" ${nodeData.type === 'ending' ? 'selected' : ''}>Ending</option>
+                        </select>
+                    </div>
+
+                    <div class="property-group">
+                        <label class="property-label">Node ID</label>
+                        <input type="text" class="property-input" value="${nodeData.id}" readonly style="opacity: 0.7;">
+                    </div>
+
+                    <div class="property-group">
+                        <label class="property-label">Position</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <input type="number" class="property-input" value="${Math.round(nodeData.x)}" 
+                                   onchange="editor.updateNodePosition('${nodeId}', this.value, null)" placeholder="X">
+                            <input type="number" class="property-input" value="${Math.round(nodeData.y)}" 
+                                   onchange="editor.updateNodePosition('${nodeId}', null, this.value)" placeholder="Y">
+                        </div>
+                    </div>
+
+                    ${nodeData.type === 'condition' ? `
+                    <div class="property-group">
+                        <label class="property-label">Condition Variable</label>
+                        <input type="text" class="property-input" value="${nodeData.conditionVar || ''}" 
+                               onchange="editor.updateNodeCondition('${nodeId}', this.value)" placeholder="variable_name">
+                    </div>
+                    ` : ''}
+
+                    ${nodeData.type === 'action' ? `
+                    <div class="property-group">
+                        <label class="property-label">Action Type</label>
+                        <select class="property-select" onchange="editor.updateNodeAction('${nodeId}', this.value)">
+                            <option value="set" ${nodeData.actionType === 'set' ? 'selected' : ''}>Set Variable</option>
+                            <option value="add" ${nodeData.actionType === 'add' ? 'selected' : ''}>Add to Variable</option>
+                            <option value="inventory" ${nodeData.actionType === 'inventory' ? 'selected' : ''}>Add Item</option>
+                        </select>
+                    </div>
+                    ` : ''}
+
+                    <div class="property-group">
+                        <label class="property-label">Connected To</label>
+                        <div style="font-size: 12px; color: var(--text-secondary);">
+                            ${nodeData.connections.length} connection(s)
+                        </div>
+                    </div>
+
+                    <div class="property-group" style="margin-top: 24px;">
+                        <button class="btn" onclick="editor.duplicateNode('${nodeId}')" style="width: 100%; margin-bottom: 8px;">
+                            📋 Duplicate Node
+                        </button>
+                        <button class="btn" onclick="editor.deleteNode('${nodeId}')" style="width: 100%; background: var(--error);">
+                            🗑️ Delete Node
+                        </button>
+                    </div>
+                `;
+            }
+
+            hideNodeProperties() {
+                document.getElementById('nodeProperties').innerHTML = 
+                    '<p style="color: var(--text-secondary); font-style: italic;">Select a node to edit its properties</p>';
+            }
+
+            updateNodeTitle(nodeId, title) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData) {
+                    nodeData.title = title;
+                }
+            }
+
+            updateNodeContent(nodeId, content) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData) {
+                    nodeData.content = content;
+                    this.updateStats();
+                }
+            }
+
+            updateNodePosition(nodeId, x, y) {
+                const nodeData = this.nodes.get(nodeId);
+                const nodeElement = document.querySelector(`[data-node-id="${nodeId}"]`);
+                
+                if (nodeData && nodeElement) {
+                    if (x !== null) {
+                        nodeData.x = parseFloat(x);
+                        nodeElement.style.left = nodeData.x + 'px';
+                    }
+                    if (y !== null) {
+                        nodeData.y = parseFloat(y);
+                        nodeElement.style.top = nodeData.y + 'px';
+                    }
+                    this.updateConnections();
+                }
+            }
+
+            changeNodeType(nodeId, newType) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData) {
+                    nodeData.type = newType;
+                    nodeData.title = this.getDefaultTitle(newType);
+                    
+                    // Remove old node and create new one
+                    const nodeElement = document.querySelector(`[data-node-id="${nodeId}"]`);
+                    if (nodeElement) {
+                        nodeElement.remove();
+                    }
+                    
+                    this.renderNode(nodeData);
+                    this.selectNode(nodeId);
+                    this.updateStats();
+                }
+            }
+
+            addChoice(nodeId) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData) {
+                    nodeData.choices.push('New choice...');
+                    
+                    // Re-render the node
+                    const nodeElement = document.querySelector(`[data-node-id="${nodeId}"]`);
+                    if (nodeElement) {
+                        const content = nodeElement.querySelector('.node-content');
+                        const textarea = content.querySelector('.node-textarea');
+                        const choicesContainer = content.querySelector('.choices');
+                        
+                        if (choicesContainer) {
+                            choicesContainer.outerHTML = this.renderNodeChoices(nodeData);
+                        } else {
+                            content.insertAdjacentHTML('beforeend', this.renderNodeChoices(nodeData));
+                        }
+                    }
+                }
+            }
+
+            removeChoice(nodeId, choiceIndex) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData && nodeData.choices.length > 1) {
+                    nodeData.choices.splice(choiceIndex, 1);
+                    
+                    // Re-render choices
+                    const nodeElement = document.querySelector(`[data-node-id="${nodeId}"]`);
+                    if (nodeElement) {
+                        const content = nodeElement.querySelector('.node-content');
+                        const choicesContainer = content.querySelector('.choices');
+                        if (choicesContainer) {
+                            choicesContainer.outerHTML = this.renderNodeChoices(nodeData);
+                        }
+                    }
+                }
+            }
+
+            updateChoice(nodeId, choiceIndex, text) {
+                const nodeData = this.nodes.get(nodeId);
+                if (nodeData && nodeData.choices[choiceIndex] !== undefined) {
+                    nodeData.choices[choiceIndex] = text;
+                }
+            }
+
+            duplicateNode(nodeId = null) {
+                const targetId = nodeId || this.selectedNode;
+                if (!targetId) return;
+
+                const originalNode = this.nodes.get(targetId);
+                if (originalNode) {
+                    const newNodeId = this.createNode(
+                        originalNode.type,
+                        originalNode.x + 50,
+                        originalNode.y + 50
+                    );
+                    
+                    const newNode = this.nodes.get(newNodeId);
+                    newNode.title = originalNode.title + ' (Copy)';
+                    newNode.content = originalNode.content;
+                    newNode.choices = [...originalNode.choices];
+                    
+                    // Update the rendered node
+                    const nodeElement = document.querySelector(`[data-node-id="${newNodeId}"]`);
+                    if (nodeElement) {
+                        nodeElement.querySelector('.node-title').value = newNode.title;
+                        nodeElement.querySelector('.node-textarea').value = newNode.content;
+                    }
+                }
+            }
+
+            deleteNode(nodeId = null) {
+                const targetId = nodeId || this.selectedNode;
+                if (!targetId) return;
+
+                // Don't allow deleting the last start node
+                if (this.nodes.get(targetId)?.type === 'start') {
+                    const startNodes = Array.from(this.nodes.values()).filter(n => n.type === 'start');
+                    if (startNodes.length === 1) {
+                        alert('Cannot delete the only start node!');
+                        return;
+                    }
+                }
+
+                // Remove connections
+                this.nodes.forEach((node, id) => {
+                    node.connections = node.connections.filter(conn => conn !== targetId);
+                });
+
+                // Remove node
+                this.nodes.delete(targetId);
+                
+                // Remove from DOM
+                const nodeElement = document.querySelector(`[data-node-id="${targetId}"]`);
+                if (nodeElement) {
+                    nodeElement.remove();
+                }
+
+                if (this.selectedNode === targetId) {
+                    this.selectedNode = null;
+                    this.hideNodeProperties();
+                }
+
+                this.updateConnections();
+                this.updateStats();
+            }
+
+            updateConnections() {
+                const svg = document.getElementById('connections');
+                svg.innerHTML = '';
+                
+                // This would contain the connection rendering logic
+                // For now, we'll keep it simple
+            }
+
+            updateCanvasTransform() {
+                const canvas = document.getElementById('canvas');
+                canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+            }
+
+            updateStats() {
+                const nodeCount = this.nodes.size;
+                const endingCount = Array.from(this.nodes.values()).filter(n => n.type === 'ending').length;
+                const connectionCount = Array.from(this.nodes.values()).reduce((sum, node) => sum + node.connections.length, 0);
+                
+                let wordCount = 0;
+                this.nodes.forEach(node => {
+                    wordCount += (node.content || '').split(/\s+/).filter(word => word.length > 0).length;
+                    node.choices.forEach(choice => {
+                        wordCount += choice.split(/\s+/).filter(word => word.length > 0).length;
+                    });
+                });
+
+                document.getElementById('nodeCount').textContent = nodeCount;
+                document.getElementById('endingCount').textContent = endingCount;
+                document.getElementById('connectionCount').textContent = connectionCount;
+                document.getElementById('wordCount').textContent = wordCount;
+            }
+
+            showContextMenu(x, y, node) {
+                this.contextMenuTarget = node.dataset.nodeId;
+                const contextMenu = document.getElementById('contextMenu');
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = x + 'px';
+                contextMenu.style.top = y + 'px';
+            }
+
+            hideContextMenu() {
+                document.getElementById('contextMenu').style.display = 'none';
+            }
+
+            exportToJSON() {
+                const projectData = {
+                    metadata: {
+                        title: 'Interactive Story',
+                        author: 'StoryWeaver Pro User',
+                        version: '1.0',
+                        created: new Date().toISOString(),
+                        nodeCount: this.nodes.size,
+                        wordCount: parseInt(document.getElementById('wordCount').textContent)
+                    },
+                    nodes: Object.fromEntries(this.nodes),
+                    connections: Object.fromEntries(this.connections),
+                    gameVariables: {},
+                    settings: {
+                        zoom: this.zoom,
+                        panX: this.panX,
+                        panY: this.panY
+                    }
+                };
+
+                return JSON.stringify(projectData, null, 2);
+            }
+
+            loadFromJSON(jsonString) {
+                try {
+                    const projectData = JSON.parse(jsonString);
+                    
+                    // Clear existing nodes
+                    document.querySelectorAll('.node').forEach(node => node.remove());
+                    this.nodes.clear();
+                    this.connections.clear();
+                    
+                    // Load nodes
+                    Object.entries(projectData.nodes).forEach(([id, nodeData]) => {
+                        this.nodes.set(id, nodeData);
+                        this.renderNode(nodeData);
+                    });
+                    
+                    // Load settings
+                    if (projectData.settings) {
+                        this.zoom = projectData.settings.zoom || 1;
+                        this.panX = projectData.settings.panX || 0;
+                        this.panY = projectData.settings.panY || 0;
+                        this.updateCanvasTransform();
+                    }
+                    
+                    // Update next node ID
+                    const maxId = Math.max(...Array.from(this.nodes.keys()).map(id => 
+                        parseInt(id.replace('node_', '')) || 0
+                    ));
+                    this.nextNodeId = maxId + 1;
+                    
+                    this.updateStats();
+                    this.updateConnections();
+                    
+                } catch (error) {
+                    alert('Error loading project: ' + error.message);
+                }
+            }
+        }
+
+        // Global instance
+        const editor = new StoryEditor();
+
+        // Global functions for UI
+        function newProject() {
+            if (confirm('Create a new project? This will clear your current work.')) {
+                location.reload();
+            }
+        }
+
+        function saveProject() {
+            const jsonData = editor.exportToJSON();
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'interactive-story.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        editor.loadFromJSON(e.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function exportJSON() {
+            showModal('Export Project', `
+                <p>Export your interactive story as JSON:</p>
+                <div class="code-block">${editor.exportToJSON().substring(0, 500)}...</div>
+                <div style="margin-top: 16px;">
+                    <button class="btn primary" onclick="downloadJSON()">📦 Download JSON</button>
+                    <button class="btn" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                </div>
+            `);
+        }
+
+        function downloadJSON() {
+            saveProject();
+            closeModal();
+        }
+
+        function copyToClipboard() {
+            navigator.clipboard.writeText(editor.exportToJSON()).then(() => {
+                alert('JSON copied to clipboard!');
+            });
+        }
+
+        function previewStory() {
+            const startNodes = Array.from(editor.nodes.values()).filter(n => n.type === 'start');
+            if (startNodes.length === 0) {
+                alert('No start node found! Add a start node to preview your story.');
+                return;
+            }
+
+            showModal('Story Preview', `
+                <div style="max-width: 600px;">
+                    <div id="storyContent" style="background: var(--surface); padding: 20px; border-radius: 8px; margin-bottom: 16px; min-height: 200px;">
+                        <h3 style="margin-bottom: 16px;">${startNodes[0].title}</h3>
+                        <p style="line-height: 1.6; margin-bottom: 20px;">${startNodes[0].content}</p>
+                        ${startNodes[0].choices.map((choice, index) => 
+                            `<button class="btn" style="display: block; width: 100%; margin: 8px 0; text-align: left;" 
+                                     onclick="continueStory('${startNodes[0].id}', ${index})">${choice}</button>`
+                        ).join('')}
+                    </div>
+                    <button class="btn" onclick="restartPreview()">🔄 Restart</button>
+                </div>
+            `);
+        }
+
+        function continueStory(fromNodeId, choiceIndex) {
+            // This would implement the story navigation logic
+            // For demo purposes, we'll just show a message
+            document.getElementById('storyContent').innerHTML = 
+                '<p style="text-align: center; color: var(--text-secondary); font-style: italic;">Story continues... (Connect nodes to see full navigation)</p>';
+        }
+
+        function restartPreview() {
+            previewStory();
+        }
+
+        function zoomIn() {
+            editor.zoom = Math.min(3, editor.zoom * 1.2);
+            editor.updateCanvasTransform();
+            document.getElementById('zoomLevel').textContent = Math.round(editor.zoom * 100) + '%';
+        }
+
+        function zoomOut() {
+            editor.zoom = Math.max(0.2, editor.zoom * 0.8);
+            editor.updateCanvasTransform();
+            document.getElementById('zoomLevel').textContent = Math.round(editor.zoom * 100) + '%';
+        }
+
+        function resetZoom() {
+            editor.zoom = 1;
+            editor.panX = 0;
+            editor.panY = 0;
+            editor.updateCanvasTransform();
+            document.getElementById('zoomLevel').textContent = '100%';
+        }
+
+        function duplicateNode() {
+            if (editor.contextMenuTarget) {
+                editor.duplicateNode(editor.contextMenuTarget);
+            }
+        }
+
+        function deleteNode() {
+            if (editor.contextMenuTarget) {
+                editor.deleteNode(editor.contextMenuTarget);
+            }
+        }
+
+        function addNote() {
+            alert('Note functionality would be implemented here');
+        }
+
+        function showModal(title, content) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = content;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        // Close modal when clicking overlay
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
