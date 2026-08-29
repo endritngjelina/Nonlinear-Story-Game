@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nonlinear Story Game Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-rows: 60px 1fr 50px;
+            height: 100vh;
+            gap: 1px;
+            background: #0a0a15;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #1e1e3f, #2d2d5a);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 2px solid #333366;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 30px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            margin-left: auto;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #1a1a2e, #16213e);
+            border-right: 2px solid #333366;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar h3 {
+            color: #4facfe;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid #333366;
+            padding-bottom: 8px;
+        }
+
+        .node-template {
+            background: linear-gradient(45deg, #2d2d5a, #3a3a6b);
+            border: 2px solid #4facfe;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .node-template:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
+        }
+
+        .node-template::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .node-template:hover::before {
+            left: 100%;
+        }
+
+        .canvas {
+            background: 
+                radial-gradient(circle at 25% 25%, rgba(79, 172, 254, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(245, 87, 108, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #0f0f23, #1a1a2e);
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .canvas:active {
+            cursor: grabbing;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                linear-gradient(rgba(79, 172, 254, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(79, 172, 254, 0.3) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .story-node {
+            position: absolute;
+            background: linear-gradient(135deg, #2d2d5a, #3a3a6b);
+            border: 2px solid #4facfe;
+            border-radius: 12px;
+            min-width: 250px;
+            max-width: 350px;
+            padding: 15px;
+            cursor: move;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .story-node:hover {
+            border-color: #00f2fe;
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .story-node.selected {
+            border-color: #f5576c;
+            box-shadow: 0 15px 40px rgba(245, 87, 108, 0.4);
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #444477;
+        }
+
+        .node-title {
+            font-weight: bold;
+            color: #4facfe;
+            font-size: 16px;
+        }
+
+        .node-type {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .node-content {
+            margin-bottom: 15px;
+        }
+
+        .node-text {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444477;
+            border-radius: 6px;
+            padding: 10px;
+            color: #ffffff;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .node-text:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+        }
+
+        .node-choices {
+            margin-top: 10px;
+        }
+
+        .choice-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .choice-text {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+
+        .choice-text:focus {
+            outline: none;
+            background: rgba(79, 172, 254, 0.2);
+        }
+
+        .connection-point {
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .connection-point:hover {
+            transform: scale(1.3);
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.6);
+        }
+
+        .connection-point.active {
+            background: linear-gradient(45deg, #f5576c, #f093fb);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .properties-panel {
+            background: linear-gradient(180deg, #1a1a2e, #16213e);
+            border-left: 2px solid #333366;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .property-group {
+            margin-bottom: 25px;
+        }
+
+        .property-group h4 {
+            color: #4facfe;
+            margin-bottom: 12px;
+            font-size: 16px;
+            border-left: 3px solid #4facfe;
+            padding-left: 10px;
+        }
+
+        .property-field {
+            margin-bottom: 15px;
+        }
+
+        .property-field label {
+            display: block;
+            color: #cccccc;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .property-field input,
+        .property-field select,
+        .property-field textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444477;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-family: inherit;
+        }
+
+        .property-field input:focus,
+        .property-field select:focus,
+        .property-field textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 8px rgba(79, 172, 254, 0.3);
+        }
+
+        .footer {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #1e1e3f, #2d2d5a);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-top: 2px solid #333366;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #4facfe;
+            border-radius: 8px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2d2d5a, #3a3a6b);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid #4facfe;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            color: #4facfe;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .export-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .export-card {
+            background: linear-gradient(45deg, rgba(79, 172, 254, 0.1), rgba(245, 87, 108, 0.1));
+            border: 1px solid #444477;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .export-card:hover {
+            transform: translateY(-5px);
+            border-color: #4facfe;
+            box-shadow: 0 10px 25px rgba(79, 172, 254, 0.2);
+        }
+
+        .code-preview {
+            background: #1e1e1e;
+            border: 1px solid #444477;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #ffffff;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 0 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            width: 35px;
+            height: 35px;
+            border: none;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .search-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #4facfe;
+            border-radius: 25px;
+            padding: 8px 15px;
+            color: white;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .search-box:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+        }
+        
+        /* Preview styles */
+        .preview-container {
+            padding: 20px;
+        }
+        
+        .preview-content {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 200px;
+            line-height: 1.6;
+        }
+        
+        .preview-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .preview-choice {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        
+        .preview-choice:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .preview-end {
+            text-align: center;
+            font-size: 24px;
+            color: #4facfe;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">🎭 StoryGraph Pro</div>
+            <div class="toolbar">
+                <select id="themeSelector" class="btn">
+                    <option value="dark">Dark Theme</option>
+                    <option value="light">Light Theme</option>
+                    <option value="neon">Neon Theme</option>
+                </select>
+                <button class="btn btn-secondary" onclick="undoAction()">↶ Undo</button>
+                <button class="btn btn-secondary" onclick="redoAction()">↷ Redo</button>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-primary" onclick="saveProject()">💾 Save Project</button>
+                <button class="btn btn-primary" onclick="loadProject()">📁 Load Project</button>
+                <button class="btn btn-success" onclick="openExportModal()">📤 Export</button>
+                <button class="btn btn-secondary" onclick="previewStory()">▶️ Preview</button>
+            </div>
+        </header>
+
+        <div class="sidebar">
+            <h3>📝 Node Templates</h3>
+            <div class="node-template" draggable="true" data-type="story">
+                <div class="node-title">Story Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Main narrative content with dialogue and descriptions
+                </div>
+            </div>
+            <div class="node-template" draggable="true" data-type="choice">
+                <div class="node-title">Choice Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Player decision point with multiple options
+                </div>
+            </div>
+            <div class="node-template" draggable="true" data-type="condition">
+                <div class="node-title">Condition Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Logic gate based on variables or flags
+                </div>
+            </div>
+            <div class="node-template" draggable="true" data-type="action">
+                <div class="node-title">Action Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Set variables, play sounds, or trigger events
+                </div>
+            </div>
+            <div class="node-template" draggable="true" data-type="start">
+                <div class="node-title">Start Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Beginning point of your story
+                </div>
+            </div>
+            <div class="node-template" draggable="true" data-type="end">
+                <div class="node-title">End Node</div>
+                <div style="font-size: 12px; color: #cccccc; margin-top: 5px;">
+                    Story conclusion with multiple endings
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">🎨 Story Elements</h3>
+            <div class="property-group">
+                <div class="property-field">
+                    <label>Story Title:</label>
+                    <input type="text" id="storyTitle" placeholder="My Interactive Story" value="Untitled Story">
+                </div>
+                <div class="property-field">
+                    <label>Author:</label>
+                    <input type="text" id="storyAuthor" placeholder="Your Name">
+                </div>
+                <div class="property-field">
+                    <label>Genre:</label>
+                    <select id="storyGenre">
+                        <option>Adventure</option>
+                        <option>Mystery</option>
+                        <option>Romance</option>
+                        <option>Horror</option>
+                        <option>Sci-Fi</option>
+                        <option>Fantasy</option>
+                        <option>Drama</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas" id="canvas">
+            <div class="canvas-grid"></div>
+            <input type="text" class="search-box" placeholder="🔍 Search nodes..." id="searchBox">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" style="width: auto; padding: 0 10px;">100%</button>
+            </div>
+            <div class="minimap" id="minimap"></div>
+        </div>
+
+        <div class="properties-panel" id="propertiesPanel">
+            <h3>⚙️ Node Properties</h3>
+            <div id="nodeProperties">
+                <div style="text-align: center; color: #666; margin-top: 50px;">
+                    Select a node to edit its properties
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <div>Nodes: <span id="nodeCount">0</span> | Connections: <span id="connectionCount">0</span></div>
+            <div>Zoom: <span id="zoomLevel">100%</span> | Last saved: <span id="lastSaved">Never</span></div>
+        </footer>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal hidden" id="exportModal">
+        <div class="modal-content">
+            <h2>📤 Export Your Story</h2>
+            <div class="export-options">
+                <div class="export-card" onclick="exportJSON()">
+                    <h3>📄 JSON Format</h3>
+                    <p>Standard data format for game engines and web applications</p>
+                </div>
+                <div class="export-card" onclick="exportTwine()">
+                    <h3>🎭 Twine Format</h3>
+                    <p>Compatible with Twine story format for interactive fiction</p>
+                </div>
+                <div class="export-card" onclick="exportInk()">
+                    <h3>✒️ Ink Format</h3>
+                    <p>Inkle's narrative scripting language for games</p>
+                </div>
+                <div class="export-card" onclick="exportHTML()">
+                    <h3>🌐 HTML Playable</h3>
+                    <p>Standalone HTML file that can be played in any browser</p>
+                </div>
+                <div class="export-card" onclick="exportYarn()">
+                    <h3>🧶 Yarn Format</h3>
+                    <p>Unity-compatible dialogue system format</p>
+                </div>
+                <div class="export-card" onclick="exportChatMapper()">
+                    <h3>💬 ChatMapper</h3>
+                    <p>Professional dialogue system for games</p>
+                </div>
+            </div>
+            <div id="exportPreview" class="code-preview hidden"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="downloadExport()" id="downloadBtn" style="display: none;">💾 Download</button>
+                <button class="btn btn-secondary" onclick="closeExportModal()">✖️ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal hidden" id="previewModal">
+        <div class="modal-content">
+            <h2>▶️ Story Preview</h2>
+            <div id="storyPreview" class="preview-container">
+                <div class="preview-content" id="previewContent">
+                    <div style="text-align: center; color: #666; margin-top: 100px;">
+                        No start node found. Add a start node to preview your story.
+                    </div>
+                </div>
+                <div class="preview-choices" id="previewChoices"></div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="restartPreview()">🔄 Restart</button>
+                <button class="btn btn-secondary" onclick="closePreviewModal()">✖️ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state management
+        let currentState = {
+            nodes: new Map(),
+            connections: [],
+            selectedNode: null,
+            dragData: null,
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            nodeIdCounter: 1,
+            history: [],
+            historyIndex: -1,
+            connectionMode: false,
+            connectionStart: null,
+            tempLine: null
+        };
+
+        let exportData = '';
+        let exportType = '';
+        let previewState = {
+            currentNode: null,
+            variables: {}
+        };
+
+        // Node class definition
+        class StoryNode {
+            constructor(id, type, x, y) {
+                this.id = id;
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.title = `${type.charAt(0).toUpperCase() + type.slice(1)} ${id}`;
+                this.content = '';
+                this.choices = type === 'choice' ? ['Choice 1', 'Choice 2'] : [];
+                this.variables = {};
+                this.conditions = {};
+                this.actions = {};
+                this.tags = [];
+                this.character = '';
+                this.mood = 'neutral';
+            }
+        }
+
+        // Initialize the application
+        function init() {
+            setupEventListeners();
+            setupDragAndDrop();
+            updateUI();
+            
+            // Add sample start node
+            addNode('start', 100, 100);
+        }
+
+        // Event listeners setup
+        function setupEventListeners() {
+            const canvas = document.getElementById('canvas');
+            const searchBox = document.getElementById('searchBox');
+            
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            canvas.addEventListener('mouseup', handleCanvasMouseUp);
+            canvas.addEventListener('wheel', handleCanvasWheel);
+            canvas.addEventListener('contextmenu', handleCanvasContextMenu);
+            
+            searchBox.addEventListener('input', handleSearch);
+            
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+
+        // Drag and drop setup
+        function setupDragAndDrop() {
+            const templates = document.querySelectorAll('.node-template');
+            const canvas = document.getElementById('canvas');
+            
+            templates.forEach(template => {
+                template.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', template.dataset.type);
+                });
+            });
+            
+            canvas.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            canvas.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const nodeType = e.dataTransfer.getData('text/plain');
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left - currentState.panX) / currentState.zoom;
+                const y = (e.clientY - rect.top - currentState.panY) / currentState.zoom;
+                addNode(nodeType, x, y);
+            });
+        }
+
+        // Add new node
+        function addNode(type, x, y) {
+            const id = currentState.nodeIdCounter++;
+            const node = new StoryNode(id, type, x, y);
+            
+            // Set default content based on type
+            switch(type) {
+                case 'start':
+                    node.content = 'Welcome to your interactive story! This is where your adventure begins...';
+                    break;
+                case 'story':
+                    node.content = 'Enter your narrative content here. Describe scenes, dialogue, and story elements.';
+                    break;
+                case 'choice':
+                    node.content = 'Present the player with meaningful choices that affect the story.';
+                    break;
+                case 'condition':
+                    node.content = 'Check variables or flags to determine story flow.';
+                    break;
+                case 'action':
+                    node.content = 'Perform actions like setting variables, playing sounds, or triggering events.';
+                    break;
+                case 'end':
+                    node.content = 'This is one possible ending to your story. Consider multiple endings for replay value.';
+                    break;
+            }
+            
+            currentState.nodes.set(id, node);
+            saveToHistory();
+            renderNode(node);
+            updateUI();
+        }
+
+        // Render individual node
+        function renderNode(node) {
+            const canvas = document.getElementById('canvas');
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'story-node';
+            nodeElement.id = `node-${node.id}`;
+            nodeElement.style.left = `${node.x}px`;
+            nodeElement.style.top = `${node.y}px`;
+            
+            let choicesHTML = '';
+            if (node.type === 'choice') {
+                choicesHTML = `
+                    <div class="node-choices">
+                        ${node.choices.map((choice, index) => `
+                            <div class="choice-item">
+                                <input type="text" class="choice-text" value="${choice}" 
+                                       onchange="updateNodeChoice(${node.id}, ${index}, this.value)">
+                                <div class="connection-point" 
+                                     onclick="startConnection(${node.id}, ${index})"
+                                     data-node-id="${node.id}" data-choice-index="${index}"></div>
+                            </div>
+                        `).join('')}
+                        <button class="btn btn-primary" style="font-size: 12px; padding: 4px 8px; margin-top: 5px;" 
+                                onclick="addChoice(${node.id})">+ Add Choice</button>
+                    </div>
+                `;
+            }
+            
+            nodeElement.innerHTML = `
+                <div class="node-header">
+                    <div class="node-title">${node.title}</div>
+                    <div class="node-type">${node.type}</div>
+                </div>
+                <div class="node-content">
+                    <textarea class="node-text" placeholder="Enter ${node.type} content..."
+                              onchange="updateNodeContent(${node.id}, this.value)">${node.content}</textarea>
+                </div>
+                ${choicesHTML}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    ${node.type !== 'choice' ? `<div class="connection-point" onclick="startConnection(${node.id}, -1)" data-node-id="${node.id}" data-choice-index="-1"></div>` : ''}
+                    <button class="btn btn-secondary" style="font-size: 10px; padding: 2px 6px;" onclick="deleteNode(${node.id})">🗑️</button>
+                </div>
+            `;
+            
+            nodeElement.addEventListener('mousedown', (e) => handleNodeMouseDown(e, node.id));
+            nodeElement.addEventListener('click', (e) => selectNode(node.id));
+            
+            canvas.appendChild(nodeElement);
+        }
+
+        // Handle node mouse down
+        function handleNodeMouseDown(e, nodeId) {
+            e.stopPropagation();
+            currentState.dragData = {
+                nodeId: nodeId,
+                startX: e.clientX,
+                startY: e.clientY,
+                nodeStartX: currentState.nodes.get(nodeId).x,
+                nodeStartY: currentState.nodes.get(nodeId).y
+            };
+        }
+
+        // Handle canvas mouse events
+        function handleCanvasMouseDown(e) {
+            if (e.target.classList.contains('connection-point')) return;
+            
+            currentState.dragData = {
+                type: 'canvas',
+                startX: e.clientX,
+                startY: e.clientY,
+                panStartX: currentState.panX,
+                panStartY: currentState.panY
+            };
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (!currentState.dragData) return;
+            
+            if (currentState.dragData.type === 'canvas') {
+                // Pan canvas
+                const deltaX = e.clientX - currentState.dragData.startX;
+                const deltaY = e.clientY - currentState.dragData.startY;
+                currentState.panX = currentState.dragData.panStartX + deltaX;
+                currentState.panY = currentState.dragData.panStartY + deltaY;
+                updateCanvasTransform();
+            } else if (currentState.dragData.nodeId) {
+                // Move node
+                const deltaX = e.clientX - currentState.dragData.startX;
+                const deltaY = e.clientY - currentState.dragData.startY;
+                const node = currentState.nodes.get(currentState.dragData.nodeId);
+                node.x = currentState.dragData.nodeStartX + deltaX / currentState.zoom;
+                node.y = currentState.dragData.nodeStartY + deltaY / currentState.zoom;
+                
+                const nodeElement = document.getElementById(`node-${node.id}`);
+                nodeElement.style.left = `${node.x}px`;
+                nodeElement.style.top = `${node.y}px`;
+                
+                updateConnections();
+            }
+        }
+
+        function handleCanvasMouseUp(e) {
+            if (currentState.dragData && currentState.dragData.nodeId) {
+                saveToHistory();
+            }
+            currentState.dragData = null;
+        }
+
+        function handleCanvasWheel(e) {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newZoom = Math.max(0.1, Math.min(3, currentState.zoom * zoomFactor));
+            
+            if (newZoom !== currentState.zoom) {
+                currentState.zoom = newZoom;
+                updateCanvasTransform();
+                updateUI();
+            }
+        }
+
+        function handleCanvasContextMenu(e) {
+            e.preventDefault();
+            // Could add context menu here
+        }
+
+        // Update canvas transform
+        function updateCanvasTransform() {
+            const canvas = document.getElementById('canvas');
+            canvas.style.transform = `scale(${currentState.zoom}) translate(${currentState.panX/currentState.zoom}px, ${currentState.panY/currentState.zoom}px)`;
+        }
+
+        // Zoom controls
+        function zoomIn() {
+            currentState.zoom = Math.min(3, currentState.zoom * 1.2);
+            updateCanvasTransform();
+            updateUI();
+        }
+
+        function zoomOut() {
+            currentState.zoom = Math.max(0.1, currentState.zoom / 1.2);
+            updateCanvasTransform();
+            updateUI();
+        }
+
+        function resetZoom() {
+            currentState.zoom = 1;
+            currentState.panX = 0;
+            currentState.panY = 0;
+            updateCanvasTransform();
+            updateUI();
+        }
+
+        // Node management
+        function selectNode(nodeId) {
+            currentState.selectedNode = nodeId;
+            
+            // Update visual selection
+            document.querySelectorAll('.story-node').forEach(node => {
+                node.classList.remove('selected');
+            });
+            document.getElementById(`node-${nodeId}`).classList.add('selected');
+            
+            updatePropertiesPanel();
+        }
+
+        function deleteNode(nodeId) {
+            if (confirm('Delete this node? This action cannot be undone.')) {
+                currentState.nodes.delete(nodeId);
+                currentState.connections = currentState.connections.filter(
+                    conn => conn.from !== nodeId && conn.to !== nodeId
+                );
+                
+                const nodeElement = document.getElementById(`node-${nodeId}`);
+                if (nodeElement) nodeElement.remove();
+                
+                if (currentState.selectedNode === nodeId) {
+                    currentState.selectedNode = null;
+                    updatePropertiesPanel();
+                }
+                
+                saveToHistory();
+                updateUI();
+                updateConnections();
+            }
+        }
+
+        function updateNodeContent(nodeId, content) {
+            const node = currentState.nodes.get(nodeId);
+            node.content = content;
+            saveToHistory();
+        }
+
+        function updateNodeChoice(nodeId, choiceIndex, value) {
+            const node = currentState.nodes.get(nodeId);
+            node.choices[choiceIndex] = value;
+            saveToHistory();
+        }
+
+        function addChoice(nodeId) {
+            const node = currentState.nodes.get(nodeId);
+            node.choices.push(`Choice ${node.choices.length + 1}`);
+            
+            // Re-render the node
+            const nodeElement = document.getElementById(`node-${nodeId}`);
+            nodeElement.remove();
+            renderNode(node);
+            
+            saveToHistory();
+        }
+
+        // Connection management
+        function startConnection(fromNodeId, choiceIndex) {
+            if (currentState.connectionMode) {
+                // Complete connection
+                completeConnection(fromNodeId, choiceIndex);
+            } else {
+                // Start connection
+                currentState.connectionMode = true;
+                currentState.connectionStart = { nodeId: fromNodeId, choiceIndex: choiceIndex };
+                
+                // Visual feedback
+                const points = document.querySelectorAll('.connection-point');
+                points.forEach(point => point.classList.add('active'));
+            }
+        }
+
+        function completeConnection(toNodeId, toChoiceIndex) {
+            if (currentState.connectionStart && currentState.connectionStart.nodeId !== toNodeId) {
+                const connection = {
+                    id: `conn-${Date.now()}`,
+                    from: currentState.connectionStart.nodeId,
+                    fromChoice: currentState.connectionStart.choiceIndex,
+                    to: toNodeId,
+                    toChoice: toChoiceIndex
+                };
+                
+                currentState.connections.push(connection);
+                saveToHistory();
+                updateConnections();
+            }
+            
+            // Reset connection mode
+            currentState.connectionMode = false;
+            currentState.connectionStart = null;
+            
+            const points = document.querySelectorAll('.connection-point');
+            points.forEach(point => point.classList.remove('active'));
+        }
+
+        function updateConnections() {
+            // Remove existing connection lines
+            document.querySelectorAll('.connection-line').forEach(line => line.remove());
+            
+            const canvas = document.getElementById('canvas');
+            
+            currentState.connections.forEach(conn => {
+                const fromNode = document.getElementById(`node-${conn.from}`);
+                const toNode = document.getElementById(`node-${conn.to}`);
+                
+                if (!fromNode || !toNode) return;
+                
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                const fromX = (fromRect.left + fromRect.width - canvasRect.left) / currentState.zoom - currentState.panX / currentState.zoom;
+                const fromY = (fromRect.top + fromRect.height/2 - canvasRect.top) / currentState.zoom - currentState.panY / currentState.zoom;
+                const toX = (toRect.left - canvasRect.left) / currentState.zoom - currentState.panX / currentState.zoom;
+                const toY = (toRect.top + toRect.height/2 - canvasRect.top) / currentState.zoom - currentState.panY / currentState.zoom;
+                
+                drawConnection(fromX, fromY, toX, toY, conn.id);
+            });
+        }
+
+        function drawConnection(x1, y1, x2, y2, connId) {
+            const canvas = document.getElementById('canvas');
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.classList.add('connection-line');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.pointerEvents = 'none';
+            svg.style.zIndex = '1';
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const midX = (x1 + x2) / 2;
+            const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+            
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', '#4facfe');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-dasharray', '5,5');
+            path.style.filter = 'drop-shadow(0 0 3px rgba(79, 172, 254, 0.5))';
+            
+            // Add arrowhead
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', `arrowhead-${connId}`);
+            marker.setAttribute('markerWidth', '10');
+            marker.setAttribute('markerHeight', '7');
+            marker.setAttribute('refX', '9');
+            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('orient', 'auto');
+            
+            const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+            polygon.setAttribute('fill', '#4facfe');
+            
+            marker.appendChild(polygon);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+            
+            path.setAttribute('marker-end', `url(#arrowhead-${connId})`);
+            svg.appendChild(path);
+            canvas.appendChild(svg);
+        }
+
+        // Properties panel
+        function updatePropertiesPanel() {
+            const panel = document.getElementById('nodeProperties');
+            
+            if (!currentState.selectedNode) {
+                panel.innerHTML = `
+                    <div style="text-align: center; color: #666; margin-top: 50px;">
+                        Select a node to edit its properties
+                    </div>
+                `;
+                return;
+            }
+            
+            const node = currentState.nodes.get(currentState.selectedNode);
+            
+            panel.innerHTML = `
+                <div class="property-group">
+                    <h4>📝 Basic Properties</h4>
+                    <div class="property-field">
+                        <label>Title:</label>
+                        <input type="text" value="${node.title}" onchange="updateNodeProperty('title', this.value)">
+                    </div>
+                    <div class="property-field">
+                        <label>Type:</label>
+                        <select onchange="updateNodeProperty('type', this.value)">
+                            <option value="story" ${node.type === 'story' ? 'selected' : ''}>Story</option>
+                            <option value="choice" ${node.type === 'choice' ? 'selected' : ''}>Choice</option>
+                            <option value="condition" ${node.type === 'condition' ? 'selected' : ''}>Condition</option>
+                            <option value="action" ${node.type === 'action' ? 'selected' : ''}>Action</option>
+                            <option value="start" ${node.type === 'start' ? 'selected' : ''}>Start</option>
+                            <option value="end" ${node.type === 'end' ? 'selected' : ''}>End</option>
+                        </select>
+                    </div>
+                    <div class="property-field">
+                        <label>Character:</label>
+                        <input type="text" value="${node.character}" placeholder="Character name" onchange="updateNodeProperty('character', this.value)">
+                    </div>
+                    <div class="property-field">
+                        <label>Mood:</label>
+                        <select onchange="updateNodeProperty('mood', this.value)">
+                            <option value="neutral" ${node.mood === 'neutral' ? 'selected' : ''}>Neutral</option>
+                            <option value="happy" ${node.mood === 'happy' ? 'selected' : ''}>Happy</option>
+                            <option value="sad" ${node.mood === 'sad' ? 'selected' : ''}>Sad</option>
+                            <option value="angry" ${node.mood === 'angry' ? 'selected' : ''}>Angry</option>
+                            <option value="surprised" ${node.mood === 'surprised' ? 'selected' : ''}>Surprised</option>
+                            <option value="mysterious" ${node.mood === 'mysterious' ? 'selected' : ''}>Mysterious</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="property-group">
+                    <h4>🏷️ Tags</h4>
+                    <div class="property-field">
+                        <label>Tags (comma-separated):</label>
+                        <input type="text" value="${node.tags.join(', ')}" placeholder="important, climax, combat" onchange="updateNodeTags(this.value)">
+                    </div>
+                </div>
+                
+                <div class="property-group">
+                    <h4>🔧 Variables & Actions</h4>
+                    <div class="property-field">
+                        <label>Set Variables:</label>
+                        <textarea placeholder="variableName = value&#10;health = 100&#10;hasKey = true" onchange="updateNodeVariables(this.value)">${Object.entries(node.variables).map(([k,v]) => `${k} = ${v}`).join('\n')}</textarea>
+                    </div>
+                    <div class="property-field">
+                        <label>Conditions:</label>
+                        <textarea placeholder="health > 50&#10;hasKey == true" onchange="updateNodeConditions(this.value)">${Object.entries(node.conditions).map(([k,v]) => `${k} ${v}`).join('\n')}</textarea>
+                    </div>
+                </div>
+                
+                <div class="property-group">
+                    <h4>📊 Statistics</h4>
+                    <div style="font-size: 12px; color: #ccc;">
+                        <div>Node ID: ${node.id}</div>
+                        <div>Position: (${Math.round(node.x)}, ${Math.round(node.y)})</div>
+                        <div>Connections Out: ${currentState.connections.filter(c => c.from === node.id).length}</div>
+                        <div>Connections In: ${currentState.connections.filter(c => c.to === node.id).length}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateNodeProperty(property, value) {
+            const node = currentState.nodes.get(currentState.selectedNode);
+            node[property] = value;
+            
+            if (property === 'title') {
+                document.querySelector(`#node-${currentState.selectedNode} .node-title`).textContent = value;
+            }
+            
+            saveToHistory();
+        }
+
+        function updateNodeTags(value) {
+            const node = currentState.nodes.get(currentState.selectedNode);
+            node.tags = value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            saveToHistory();
+        }
+
+        function updateNodeVariables(value) {
+            const node = currentState.nodes.get(currentState.selectedNode);
+            node.variables = {};
+            
+            value.split('\n').forEach(line => {
+                const [key, val] = line.split('=').map(s => s.trim());
+                if (key && val) {
+                    node.variables[key] = val;
+                }
+            });
+            
+            saveToHistory();
+        }
+
+        function updateNodeConditions(value) {
+            const node = currentState.nodes.get(currentState.selectedNode);
+            node.conditions = {};
+            
+            value.split('\n').forEach(line => {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length >= 3) {
+                    const key = parts[0];
+                    const operator = parts[1];
+                    const val = parts.slice(2).join(' ');
+                    node.conditions[key] = `${operator} ${val}`;
+                }
+            });
+            
+            saveToHistory();
+        }
+
+        // Search functionality
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase();
+            const nodes = document.querySelectorAll('.story-node');
+            
+            nodes.forEach(nodeEl => {
+                const nodeId = parseInt(nodeEl.id.replace('node-', ''));
+                const node = currentState.nodes.get(nodeId);
+                
+                const matches = 
+                    node.title.toLowerCase().includes(query) ||
+                    node.content.toLowerCase().includes(query) ||
+                    node.character.toLowerCase().includes(query) ||
+                    node.tags.some(tag => tag.toLowerCase().includes(query));
+                
+                if (query === '' || matches) {
+                    nodeEl.style.opacity = '1';
+                    nodeEl.style.transform = 'scale(1)';
+                } else {
+                    nodeEl.style.opacity = '0.3';
+                    nodeEl.style.transform = 'scale(0.9)';
+                }
+            });
+        }
+
+        // History management
+        function saveToHistory() {
+            const state = {
+                nodes: Array.from(currentState.nodes.entries()),
+                connections: [...currentState.connections]
+            };
+            
+            currentState.history = currentState.history.slice(0, currentState.historyIndex + 1);
+            currentState.history.push(JSON.stringify(state));
+            currentState.historyIndex++;
+            
+            // Limit history size
+            if (currentState.history.length > 50) {
+                currentState.history.shift();
+                currentState.historyIndex--;
+            }
+        }
+
+        function undoAction() {
+            if (currentState.historyIndex > 0) {
+                currentState.historyIndex--;
+                loadHistoryState();
+            }
+        }
+
+        function redoAction() {
+            if (currentState.historyIndex < currentState.history.length - 1) {
+                currentState.historyIndex++;
+                loadHistoryState();
+            }
+        }
+
+        function loadHistoryState() {
+            if (currentState.historyIndex >= 0 && currentState.historyIndex < currentState.history.length) {
+                const state = JSON.parse(currentState.history[currentState.historyIndex]);
+                
+                // Clear current nodes
+                document.querySelectorAll('.story-node').forEach(node => node.remove());
+                document.querySelectorAll('.connection-line').forEach(line => line.remove());
+                
+                // Restore state
+                currentState.nodes = new Map(state.nodes);
+                currentState.connections = state.connections;
+                currentState.selectedNode = null;
+                
+                // Re-render nodes
+                currentState.nodes.forEach(node => renderNode(node));
+                updateConnections();
+                updatePropertiesPanel();
+                updateUI();
+            }
+        }
+
+        // Update UI elements
+        function updateUI() {
+            document.getElementById('nodeCount').textContent = currentState.nodes.size;
+            document.getElementById('connectionCount').textContent = currentState.connections.length;
+            document.getElementById('zoomLevel').textContent = Math.round(currentState.zoom * 100) + '%';
+        }
+
+        // Keyboard shortcuts
+        function handleKeyDown(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveProject();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redoAction();
+                        } else {
+                            undoAction();
+                        }
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        openExportModal();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Delete' && currentState.selectedNode) {
+                deleteNode(currentState.selectedNode);
+            }
+        }
+
+        function handleKeyUp(e) {
+            // Handle key releases if needed
+        }
+
+        // Project management
+        function saveProject() {
+            const projectData = {
+                title: document.getElementById('storyTitle').value,
+                author: document.getElementById('storyAuthor').value,
+                genre: document.getElementById('storyGenre').value,
+                nodes: Array.from(currentState.nodes.entries()),
+                connections: currentState.connections,
+                metadata: {
+                    version: '1.0',
+                    created: new Date().toISOString(),
+                    nodeCount: currentState.nodes.size,
+                    connectionCount: currentState.connections.length
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(projectData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectData.title.replace(/\s+/g, '_') || 'story_project'}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('lastSaved').textContent = new Date().toLocaleTimeString();
+        }
+
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const projectData = JSON.parse(e.target.result);
+                        
+                        // Clear current project
+                        document.querySelectorAll('.story-node').forEach(node => node.remove());
+                        document.querySelectorAll('.connection-line').forEach(line => line.remove());
+                        
+                        // Load project data
+                        document.getElementById('storyTitle').value = projectData.title || '';
+                        document.getElementById('storyAuthor').value = projectData.author || '';
+                        document.getElementById('storyGenre').value = projectData.genre || 'Adventure';
+                        
+                        currentState.nodes = new Map(projectData.nodes);
+                        currentState.connections = projectData.connections;
+                        currentState.selectedNode = null;
+                        
+                        // Find highest node ID for counter
+                        let maxId = 0;
+                        currentState.nodes.forEach(node => {
+                            if (node.id > maxId) maxId = node.id;
+                        });
+                        currentState.nodeIdCounter = maxId + 1;
+                        
+                        // Re-render everything
+                        currentState.nodes.forEach(node => renderNode(node));
+                        updateConnections();
+                        updatePropertiesPanel();
+                        updateUI();
+                        
+                        saveToHistory();
+                        
+                    } catch (error) {
+                        alert('Error loading project file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // Export functionality
+        function openExportModal() {
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.add('hidden');
+            document.getElementById('exportPreview').classList.add('hidden');
+            document.getElementById('downloadBtn').style.display = 'none';
+        }
+
+        function showExportPreview(title, content) {
+            const preview = document.getElementById('exportPreview');
+            preview.textContent = content;
+            preview.classList.remove('hidden');
+            
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+        }
+
+        function downloadExport() {
+            const blob = new Blob([exportData], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Set filename based on export type
+            let filename = document.getElementById('storyTitle').value || 'story';
+            filename = filename.replace(/\s+/g, '_');
+            
+            switch(exportType) {
+                case 'json': filename += '.json'; break;
+                case 'twee': filename += '.twee'; break;
+                case 'ink': filename += '.ink'; break;
+                case 'html': filename += '.html'; break;
+                case 'yarn': filename += '.yarn'; break;
+                case 'chatmapper': filename += '.xml'; break;
+                default: filename += '.txt';
+            }
+            
+            a.download = filename;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function exportJSON() {
+            const data = {
+                title: document.getElementById('storyTitle').value,
+                author: document.getElementById('storyAuthor').value,
+                genre: document.getElementById('storyGenre').value,
+                nodes: Object.fromEntries(currentState.nodes),
+                connections: currentState.connections
+            };
+            
+            exportData = JSON.stringify(data, null, 2);
+            exportType = 'json';
+            showExportPreview('JSON Export', exportData);
+        }
+
+        function exportTwine() {
+            let twineContent = `:: Start\n`;
+            const startNode = Array.from(currentState.nodes.values()).find(node => node.type === 'start');
+            
+            if (startNode) {
+                twineContent += startNode.content + '\n\n';
+                const connections = currentState.connections.filter(conn => conn.from === startNode.id);
+                connections.forEach(conn => {
+                    const targetNode = currentState.nodes.get(conn.to);
+                    if (targetNode) {
+                        twineContent += `[[${targetNode.title}]]\n`;
+                    }
+                });
+            }
+            
+            currentState.nodes.forEach(node => {
+                if (node.type !== 'start') {
+                    twineContent += `\n:: ${node.title}\n`;
+                    twineContent += node.content + '\n\n';
+                    
+                    if (node.type === 'choice') {
+                        const connections = currentState.connections.filter(conn => conn.from === node.id);
+                        connections.forEach((conn, index) => {
+                            const targetNode = currentState.nodes.get(conn.to);
+                            if (targetNode && node.choices[index]) {
+                                twineContent += `[[${node.choices[index]} -> ${targetNode.title}]]\n`;
+                            }
+                        });
+                    }
+                }
+            });
+            
+            exportData = twineContent;
+            exportType = 'twee';
+            showExportPreview('Twine/Twee Export', exportData);
+        }
+
+        function exportInk() {
+            let inkContent = `// ${document.getElementById('storyTitle').value}\n`;
+            inkContent += `// by ${document.getElementById('storyAuthor').value}\n\n`;
+            
+            const startNode = Array.from(currentState.nodes.values()).find(node => node.type === 'start');
+            if (startNode) {
+                inkContent += `=== start ===\n${startNode.content}\n\n`;
+                
+                const connections = currentState.connections.filter(conn => conn.from === startNode.id);
+                connections.forEach(conn => {
+                    const targetNode = currentState.nodes.get(conn.to);
+                    if (targetNode) {
+                        inkContent += `-> ${targetNode.title.replace(/\s+/g, '_').toLowerCase()}\n`;
+                    }
+                });
+            }
+            
+            currentState.nodes.forEach(node => {
+                if (node.type !== 'start') {
+                    const knotName = node.title.replace(/\s+/g, '_').toLowerCase();
+                    inkContent += `\n=== ${knotName} ===\n`;
+                    inkContent += `${node.content}\n\n`;
+                    
+                    if (node.type === 'choice') {
+                        const connections = currentState.connections.filter(conn => conn.from === node.id);
+                        connections.forEach((conn, index) => {
+                            const targetNode = currentState.nodes.get(conn.to);
+                            if (targetNode && node.choices[index]) {
+                                const targetKnot = targetNode.title.replace(/\s+/g, '_').toLowerCase();
+                                inkContent += `* ${node.choices[index]} -> ${targetKnot}\n`;
+                            }
+                        });
+                    } else if (node.type === 'end') {
+                        inkContent += `-> END\n`;
+                    }
+                }
+            });
+            
+            exportData = inkContent;
+            exportType = 'ink';
+            showExportPreview('Ink Export', exportData);
+        }
+
+        function exportHTML() {
+            const storyTitle = document.getElementById('storyTitle').value || 'Interactive Story';
+            const author = document.getElementById('storyAuthor').value || 'Anonymous';
+            
+            let htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${storyTitle}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .author {
+            font-size: 1.2rem;
+            color: #cccccc;
+            font-style: italic;
+        }
+        
+        .story-content {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            min-height: 200px;
+        }
+        
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .choice-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+        
+        .choice-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .end-screen {
+            text-align: center;
+            padding: 40px;
+            font-size: 2rem;
+            color: #4facfe;
+        }
+        
+        .restart-btn {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">${storyTitle}</h1>
+            <div class="author">by ${author}</div>
+        </div>
+        
+        <div class="story-content" id="storyContent"></div>
+        <div class="choices" id="choicesContainer"></div>
+    </div>
+    
+    <script>
+        const storyNodes = ${JSON.stringify(Array.from(currentState.nodes.values()))};
+        const connections = ${JSON.stringify(currentState.connections)};
+        
+        let currentNode = storyNodes.find(n => n.type === 'start');
+        const contentDiv = document.getElementById('storyContent');
+        const choicesDiv = document.getElementById('choicesContainer');
+        
+        function showNode(node) {
+            if (!node) return;
+            
+            contentDiv.innerHTML = node.content;
+            choicesDiv.innerHTML = '';
+            
+            if (node.type === 'end') {
+                contentDiv.innerHTML = '<div class="end-screen">' + node.content + '</div>';
+                const restartBtn = document.createElement('button');
+                restartBtn.className = 'restart-btn';
+                restartBtn.textContent = 'Play Again';
+                restartBtn.onclick = () => {
+                    currentNode = storyNodes.find(n => n.type === 'start');
+                    showNode(currentNode);
+                };
+                choicesDiv.appendChild(restartBtn);
+                return;
+            }
+            
+            const nodeConnections = connections.filter(conn => conn.from === node.id);
+            
+            if (node.type === 'choice') {
+                node.choices.forEach((choice, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = choice;
+                    btn.onclick = () => {
+                        const connection = nodeConnections.find(conn => conn.fromChoice === index);
+                        if (connection) {
+                            currentNode = storyNodes.find(n => n.id === connection.to);
+                            showNode(currentNode);
+                        }
+                    };
+                    choicesDiv.appendChild(btn);
+                });
+            } else {
+                if (nodeConnections.length > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = 'Continue';
+                    btn.onclick = () => {
+                        currentNode = storyNodes.find(n => n.id === nodeConnections[0].to);
+                        showNode(currentNode);
+                    };
+                    choicesDiv.appendChild(btn);
+                }
+            }
+        }
+        
+        // Start the story
+        showNode(currentNode);
+    </script>
+</body>
+</html>`;
+            
+            exportData = htmlContent;
+            exportType = 'html';
+            showExportPreview('HTML Export', exportData);
+        }
+
+        function exportYarn() {
+            let yarnContent = `title: ${document.getElementById('storyTitle').value || 'Untitled'}
+author: ${document.getElementById('storyAuthor').value || 'Anonymous'}
+---
+===
+`;
+
+            // Find start node
+            const startNode = Array.from(currentState.nodes.values()).find(n => n.type === 'start');
+            if (startNode) {
+                yarnContent += `start: Start
+---
+${startNode.content}
+===\n`;
+                
+                // Add connections from start node
+                const startConnections = currentState.connections.filter(conn => conn.from === startNode.id);
+                startConnections.forEach(conn => {
+                    const targetNode = currentState.nodes.get(conn.to);
+                    if (targetNode) {
+                        yarnContent += `-> ${targetNode.title.replace(/\s+/g, '_')}\n`;
+                    }
+                });
+                
+                yarnContent += `===\n`;
+            }
+            
+            // Add other nodes
+            currentState.nodes.forEach(node => {
+                if (node.type !== 'start') {
+                    yarnContent += `${node.title.replace(/\s+/g, '_')}:\n`;
+                    yarnContent += `${node.content}\n`;
+                    
+                    if (node.type === 'choice') {
+                        const connections = currentState.connections.filter(conn => conn.from === node.id);
+                        connections.forEach((conn, index) => {
+                            const targetNode = currentState.nodes.get(conn.to);
+                            if (targetNode && node.choices[index]) {
+                                yarnContent += `-> ${targetNode.title.replace(/\s+/g, '_')} // ${node.choices[index]}\n`;
+                            }
+                        });
+                    } else if (node.type === 'end') {
+                        yarnContent += `-> END\n`;
+                    } else {
+                        const connections = currentState.connections.filter(conn => conn.from === node.id);
+                        if (connections.length > 0) {
+                            yarnContent += `-> ${currentState.nodes.get(connections[0].to).title.replace(/\s+/g, '_')}\n`;
+                        }
+                    }
+                    
+                    yarnContent += `===\n`;
+                }
+            });
+            
+            exportData = yarnContent;
+            exportType = 'yarn';
+            showExportPreview('Yarn Export', exportData);
+        }
+
+        function exportChatMapper() {
+            let xmlContent = `<?xml version="1.0" encoding="utf-8"?>
+<ChatMapperProject>
+    <Title>${document.getElementById('storyTitle').value || 'Untitled'}</Title>
+    <Author>${document.getElementById('storyAuthor').value || 'Anonymous'}</Author>
+    <Conversations>
+        <Conversation>
+            <Title>Main Conversation</Title>
+            <DialogEntries>
+`;
+            
+            // Add nodes as dialog entries
+            currentState.nodes.forEach(node => {
+                xmlContent += `<DialogEntry>
+    <ID>${node.id}</ID>
+    <Title>${node.title}</Title>
+    <ConditionsString></ConditionsString>
+    <MenuText>${node.type === 'choice' ? 'Choice' : node.type}</MenuText>
+    <DialogText><![CDATA[${node.content}]]></DialogText>
+    <OutgoingLinks>
+`;
+                
+                // Add connections as outgoing links
+                const connections = currentState.connections.filter(conn => conn.from === node.id);
+                connections.forEach(conn => {
+                    xmlContent += `<Link>
+        <OriginConversationID>1</OriginConversationID>
+        <OriginDialogID>${node.id}</OriginDialogID>
+        <DestinationConversationID>1</DestinationConversationID>
+        <DestinationDialogID>${conn.to}</DestinationDialogID>
+        <IsConnector>False</IsConnector>
+    </Link>
+`;
+                });
+                
+                xmlContent += `</OutgoingLinks>
+</DialogEntry>
+`;
+            });
+            
+            xmlContent += `</DialogEntries>
+        </Conversation>
+    </Conversations>
+</ChatMapperProject>`;
+            
+            exportData = xmlContent;
+            exportType = 'chatmapper';
+            showExportPreview('ChatMapper Export', exportData);
+        }
+
+        // Preview functionality
+        function previewStory() {
+            const startNode = Array.from(currentState.nodes.values()).find(n => n.type === 'start');
+            if (!startNode) {
+                alert('No start node found! Please add a start node to preview your story.');
+                return;
+            }
+            
+            previewState = {
+                currentNode: startNode,
+                variables: {}
+            };
+            
+            document.getElementById('previewModal').classList.remove('hidden');
+            showPreviewNode(startNode);
+        }
+
+        function showPreviewNode(node) {
+            const contentDiv = document.getElementById('previewContent');
+            const choicesDiv = document.getElementById('previewChoices');
+            
+            contentDiv.innerHTML = `<div class="preview-content">${node.content}</div>`;
+            choicesDiv.innerHTML = '';
+            
+            if (node.type === 'end') {
+                contentDiv.innerHTML = `<div class="preview-end">${node.content}</div>`;
+                return;
+            }
+            
+            const connections = currentState.connections.filter(conn => conn.from === node.id);
+            
+            if (node.type === 'choice') {
+                node.choices.forEach((choice, index) => {
+                    const connection = connections.find(conn => conn.fromChoice === index);
+                    if (connection) {
+                        const btn = document.createElement('button');
+                        btn.className = 'preview-choice';
+                        btn.textContent = choice;
+                        btn.onclick = () => {
+                            const targetNode = currentState.nodes.get(connection.to);
+                            if (targetNode) {
+                                previewState.currentNode = targetNode;
+                                showPreviewNode(targetNode);
+                            }
+                        };
+                        choicesDiv.appendChild(btn);
+                    }
+                });
+            } else {
+                if (connections.length > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = 'preview-choice';
+                    btn.textContent = 'Continue';
+                    btn.onclick = () => {
+                        const targetNode = currentState.nodes.get(connections[0].to);
+                        if (targetNode) {
+                            previewState.currentNode = targetNode;
+                            showPreviewNode(targetNode);
+                        }
+                    };
+                    choicesDiv.appendChild(btn);
+                }
+            }
+        }
+
+        function restartPreview() {
+            const startNode = Array.from(currentState.nodes.values()).find(n => n.type === 'start');
+            if (startNode) {
+                previewState.currentNode = startNode;
+                showPreviewNode(startNode);
+            }
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // Initialize the application
+        window.onload = init;
+    </script>
+</body>
+</html>
