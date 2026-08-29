@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryForge Pro - Visual Story Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: #333;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-editor {
+            flex: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .toolbar {
+            height: 60px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .canvas {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            cursor: grab;
+            background-image: 
+                radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.3) 2px, transparent 2px);
+            background-size: 50px 50px;
+            background-position: 0 0, 25px 25px;
+        }
+
+        .canvas.dragging {
+            cursor: grabbing;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            padding: 12px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn.secondary:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .story-node {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 280px;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            cursor: move;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            backdrop-filter: blur(20px);
+        }
+
+        .story-node:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .story-node.selected {
+            border-color: #667eea;
+            box-shadow: 0 15px 50px rgba(102, 126, 234, 0.3);
+        }
+
+        .story-node.start-node {
+            background: linear-gradient(135deg, rgba(102, 226, 126, 0.95) 0%, rgba(76, 175, 80, 0.95) 100%);
+            color: white;
+        }
+
+        .story-node.end-node {
+            background: linear-gradient(135deg, rgba(255, 99, 132, 0.95) 0%, rgba(255, 87, 87, 0.95) 100%);
+            color: white;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .node-type {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-id {
+            font-size: 11px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        .node-content textarea {
+            width: 100%;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            min-height: 80px;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .node-content textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .node-choices {
+            margin-top: 15px;
+        }
+
+        .choice {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .choice input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 4px 8px;
+            font-size: 13px;
+        }
+
+        .choice input:focus {
+            outline: none;
+        }
+
+        .connection-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .connection-point:hover {
+            transform: scale(1.3);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .connection-point.output {
+            right: -6px;
+            background: #4CAF50;
+        }
+
+        .connection-point.input {
+            left: -6px;
+            background: #FF5722;
+        }
+
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+
+        pre {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            border: 1px solid #e9ecef;
+        }
+
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.95);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(76, 175, 80, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            font-weight: 600;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .zoom-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .progress-bar {
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .node-animations {
+            animation: nodeFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes nodeFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(0.5deg); }
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">StoryForge Pro</div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Project Tools</div>
+                <button class="btn" onclick="addNode('story')">📝 Add Story Node</button>
+                <button class="btn" onclick="addNode('choice')">🔀 Add Choice Node</button>
+                <button class="btn" onclick="addNode('condition')">⚡ Add Condition Node</button>
+                <button class="btn" onclick="addNode('end')">🏁 Add End Node</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Search & Navigate</div>
+                <div class="search-box">
+                    <input type="text" id="searchNodes" placeholder="Search nodes..." onkeyup="searchNodes()">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Export & Preview</div>
+                <button class="btn secondary" onclick="showPreview()">👁️ Preview Story</button>
+                <button class="btn secondary" onclick="exportJSON()">💾 Export JSON</button>
+                <button class="btn secondary" onclick="importJSON()">📁 Import JSON</button>
+                <button class="btn secondary" onclick="validateStory()">✅ Validate Story</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Project Statistics</div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span>📊</span>
+                        <span id="nodeCount">0 Nodes</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>🔗</span>
+                        <span id="connectionCount">0 Connections</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>📈</span>
+                        <span id="completionRate">0% Complete</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-editor">
+            <div class="toolbar">
+                <button class="btn" onclick="autoLayout()">🎨 Auto Layout</button>
+                <button class="btn" onclick="centerView()">🎯 Center View</button>
+                <button class="btn secondary" onclick="clearCanvas()">🗑️ Clear All</button>
+                <button class="btn secondary" onclick="saveProject()">💾 Save Project</button>
+                <button class="btn secondary" onclick="showHelp()">❓ Help</button>
+            </div>
+            
+            <div class="canvas" id="canvas">
+                <svg id="connectionsSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;">
+                </svg>
+            </div>
+
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⌂</button>
+            </div>
+
+            <div class="minimap"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Story Preview</h2>
+                <button class="close-btn" onclick="closeModal('previewModal')">&times;</button>
+            </div>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Export Story Data</h2>
+                <button class="close-btn" onclick="closeModal('exportModal')">&times;</button>
+            </div>
+            <pre id="jsonOutput"></pre>
+            <button class="btn" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <button class="btn" onclick="downloadJSON()">⬇️ Download JSON</button>
+        </div>
+    </div>
+
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">StoryForge Pro - User Guide</h2>
+                <button class="close-btn" onclick="closeModal('helpModal')">&times;</button>
+            </div>
+            <div id="helpContent">
+                <h3>🎯 Getting Started</h3>
+                <p>Create interactive stories with branching narratives using our visual node editor.</p>
+                
+                <h3>📝 Node Types</h3>
+                <ul>
+                    <li><strong>Story Node:</strong> Contains narrative text</li>
+                    <li><strong>Choice Node:</strong> Presents player options</li>
+                    <li><strong>Condition Node:</strong> Logic-based branching</li>
+                    <li><strong>End Node:</strong> Story conclusion</li>
+                </ul>
+                
+                <h3>🔗 Connections</h3>
+                <p>Click and drag between connection points to link nodes. Green points are outputs, red points are inputs.</p>
+                
+                <h3>⌨️ Shortcuts</h3>
+                <ul>
+                    <li><strong>Delete:</strong> Remove selected node</li>
+                    <li><strong>Ctrl+S:</strong> Save project</li>
+                    <li><strong>Ctrl+Z:</strong> Undo (coming soon)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+    <script>
+        // Global state management
+        let nodes = [];
+        let connections = [];
+        let selectedNode = null;
+        let draggedNode = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let canvasOffset = { x: 0, y: 0 };
+        let zoomLevel = 1;
+        let nodeIdCounter = 1;
+        let connectionIdCounter = 1;
+        let isConnecting = false;
+        let connectionStart = null;
+
+        // Initialize the application
+        function init() {
+            setupEventListeners();
+            addNode('story'); // Add starter node
+            updateStats();
+            centerView();
+            showToast('Welcome to StoryForge Pro! 🚀');
+        }
+
+        // Event listeners setup
+        function setupEventListeners() {
+            const canvas = document.getElementById('canvas');
+            
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            canvas.addEventListener('mouseup', handleCanvasMouseUp);
+            canvas.addEventListener('wheel', handleZoom);
+            
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Prevent context menu on canvas
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        // Node creation with advanced positioning
+        function addNode(type, x = null, y = null) {
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+            
+            const node = {
+                id: `node_${nodeIdCounter++}`,
+                type: type,
+                x: x || (Math.random() * 400 + 100),
+                y: y || (Math.random() * 300 + 100),
+                content: getDefaultContent(type),
+                choices: type === 'choice' ? ['Option A', 'Option B'] : [],
+                connections: []
+            };
+            
+            nodes.push(node);
+            renderNode(node);
+            updateStats();
+            updateProgressBar();
+            
+            return node;
+        }
+
+        function getDefaultContent(type) {
+            const defaults = {
+                'story': 'Enter your story text here...',
+                'choice': 'Present the player with a decision:',
+                'condition': 'Define your condition logic here...',
+                'end': 'The End. Thank you for playing!'
+            };
+            return defaults[type] || 'Node content...';
+        }
+
+        // Advanced node rendering with animations
+        function renderNode(node) {
+            const canvas = document.getElementById('canvas');
+            
+            const nodeElement = document.createElement('div');
+            nodeElement.className = `story-node node-animations ${node.type === 'story' && node.id === 'node_1' ? 'start-node' : ''} ${node.type === 'end' ? 'end-node' : ''}`;
+            nodeElement.id = node.id;
+            nodeElement.style.left = `${node.x}px`;
+            nodeElement.style.top = `${node.y}px`;
+            
+            nodeElement.innerHTML = `
+                <div class="node-header">
+                    <span class="node-type">${node.type}</span>
+                    <span class="node-id">${node.id}</span>
+                </div>
+                <div class="node-content">
+                    <textarea placeholder="Enter content..." onchange="updateNodeContent('${node.id}', this.value)" oninput="autoResize(this)">${node.content}</textarea>
+                </div>
+                ${node.type === 'choice' ? `
+                    <div class="node-choices">
+                        ${node.choices.map((choice, index) => `
+                            <div class="choice">
+                                <input type="text" value="${choice}" onchange="updateChoice('${node.id}', ${index}, this.value)" placeholder="Choice option...">
+                                <button onclick="removeChoice('${node.id}', ${index})" style="background: none; border: none; color: #ff5722; cursor: pointer; padding: 4px;">×</button>
+                            </div>
+                        `).join('')}
+                        <button onclick="addChoice('${node.id}')" class="btn" style="margin-top: 10px; font-size: 12px; padding: 8px;">+ Add Choice</button>
+                    </div>
+                ` : ''}
+                <div class="connection-point input" onclick="startConnection('${node.id}', 'input')"></div>
+                <div class="connection-point output" onclick="startConnection('${node.id}', 'output')"></div>
+            `;
+            
+            // Add event listeners for dragging
+            nodeElement.addEventListener('mousedown', (e) => handleNodeMouseDown(e, node.id));
+            nodeElement.addEventListener('click', () => selectNode(node.id));
+            
+            canvas.appendChild(nodeElement);
+            
+            // Auto-resize textarea
+            const textarea = nodeElement.querySelector('textarea');
+            if (textarea) {
+                autoResize(textarea);
+            }
+        }
+
+        // Auto-resize textarea to fit content
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.max(textarea.scrollHeight, 80) + 'px';
+        }
+
+        // Advanced connection system
+        function startConnection(nodeId, type) {
+            if (isConnecting && connectionStart && connectionStart.nodeId !== nodeId) {
+                // Complete connection
+                createConnection(connectionStart.nodeId, nodeId);
+                isConnecting = false;
+                connectionStart = null;
+            } else {
+                // Start new connection
+                isConnecting = true;
+                connectionStart = { nodeId, type };
+                showToast(`Click another node to create connection`);
+            }
+        }
+
+        function createConnection(fromNodeId, toNodeId) {
+            const fromNode = nodes.find(n => n.id === fromNodeId);
+            const toNode = nodes.find(n => n.id === toNodeId);
+            
+            if (!fromNode || !toNode || fromNode === toNode) return;
+            
+            // Check if connection already exists
+            const existingConnection = connections.find(c => 
+                c.from === fromNodeId && c.to === toNodeId
+            );
+            
+            if (existingConnection) {
+                showToast('Connection already exists!', 'warning');
+                return;
+            }
+            
+            const connection = {
+                id: `conn_${connectionIdCounter++}`,
+                from: fromNodeId,
+                to: toNodeId
+            };
+            
+            connections.push(connection);
+            fromNode.connections.push(toNodeId);
+            
+            renderConnections();
+            updateStats();
+            showToast('Connection created! 🔗');
+        }
+
+        // SVG-based connection rendering
+        function renderConnections() {
+            const svg = document.getElementById('connectionsSvg');
+            svg.innerHTML = '';
+            
+            connections.forEach(connection => {
+                const fromNode = document.getElementById(connection.from);
+                const toNode = document.getElementById(connection.to);
+                
+                if (!fromNode || !toNode) return;
+                
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+                const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+                
+                const x1 = fromRect.right - canvasRect.left - 6;
+                const y1 = fromRect.top - canvasRect.top + fromRect.height / 2;
+                const x2 = toRect.left - canvasRect.left + 6;
+                const y2 = toRect.top - canvasRect.top + toRect.height / 2;
+                
+                // Curved connection line
+                const midX = (x1 + x2) / 2;
+                const curve = Math.abs(x2 - x1) * 0.3;
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${x1} ${y1} C ${midX + curve} ${y1}, ${midX - curve} ${y2}, ${x2} ${y2}`);
+                path.setAttribute('stroke', '#667eea');
+                path.setAttribute('stroke-width', '3');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('opacity', '0.8');
+                
+                // Add arrow marker
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                marker.innerHTML = `
+                    <marker id="arrowhead-${connection.id}" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                    </marker>
+                `;
+                path.setAttribute('marker-end', `url(#arrowhead-${connection.id})`);
+                
+                svg.appendChild(marker);
+                svg.appendChild(path);
+            });
+        }
+
+        // Node interaction handlers
+        function handleNodeMouseDown(e, nodeId) {
+            e.stopPropagation();
+            selectNode(nodeId);
+            
+            draggedNode = nodeId;
+            const node = nodes.find(n => n.id === nodeId);
+            const nodeElement = document.getElementById(nodeId);
+            const rect = nodeElement.getBoundingClientRect();
+            
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            isDragging = true;
+            
+            nodeElement.style.zIndex = '1000';
+            document.getElementById('canvas').classList.add('dragging');
+        }
+
+        function handleCanvasMouseDown(e) {
+            if (e.target.id === 'canvas') {
+                selectedNode = null;
+                updateNodeSelection();
+            }
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (isDragging && draggedNode) {
+                const canvas = document.getElementById('canvas');
+                const rect = canvas.getBoundingClientRect();
+                
+                const newX = e.clientX - rect.left - dragOffset.x + canvasOffset.x;
+                const newY = e.clientY - rect.top - dragOffset.y + canvasOffset.y;
+                
+                const node = nodes.find(n => n.id === draggedNode);
+                node.x = newX;
+                node.y = newY;
+                
+                const nodeElement = document.getElementById(draggedNode);
+                nodeElement.style.left = `${newX}px`;
+                nodeElement.style.top = `${newY}px`;
+                
+                renderConnections();
+            }
+        }
+
+        function handleCanvasMouseUp(e) {
+            if (isDragging) {
+                isDragging = false;
+                draggedNode = null;
+                document.getElementById('canvas').classList.remove('dragging');
+                
+                // Reset z-index for all nodes
+                nodes.forEach(node => {
+                    const element = document.getElementById(node.id);
+                    if (element) element.style.zIndex = '';
+                });
+            }
+        }
+
+        // Node selection system
+        function selectNode(nodeId) {
+            selectedNode = nodeId;
+            updateNodeSelection();
+        }
+
+        function updateNodeSelection() {
+            nodes.forEach(node => {
+                const element = document.getElementById(node.id);
+                if (element) {
+                    element.classList.toggle('selected', node.id === selectedNode);
+                }
+            });
+        }
+
+        // Content update functions
+        function updateNodeContent(nodeId, content) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                node.content = content;
+                updateStats();
+            }
+        }
+
+        function addChoice(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node && node.choices) {
+                node.choices.push(`Option ${node.choices.length + 1}`);
+                refreshNode(node);
+            }
+        }
+
+        function updateChoice(nodeId, index, value) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node && node.choices && node.choices[index] !== undefined) {
+                node.choices[index] = value;
+            }
+        }
+
+        function removeChoice(nodeId, index) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node && node.choices && node.choices.length > 2) {
+                node.choices.splice(index, 1);
+                refreshNode(node);
+            } else {
+                showToast('Choice nodes must have at least 2 options', 'warning');
+            }
+        }
+
+        function refreshNode(node) {
+            const element = document.getElementById(node.id);
+            if (element) {
+                element.remove();
+                renderNode(node);
+            }
+        }
+
+        // Zoom and pan functionality
+        function handleZoom(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoomLevel = Math.max(0.3, Math.min(2, zoomLevel * delta));
+            
+            const canvas = document.getElementById('canvas');
+            canvas.style.transform = `scale(${zoomLevel}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`;
+        }
+
+        function zoomIn() {
+            zoomLevel = Math.min(2, zoomLevel * 1.2);
+            updateCanvasTransform();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(0.3, zoomLevel * 0.8);
+            updateCanvasTransform();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            canvasOffset = { x: 0, y: 0 };
+            updateCanvasTransform();
+        }
+
+        function updateCanvasTransform() {
+            const canvas = document.getElementById('canvas');
+            canvas.style.transform = `scale(${zoomLevel}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`;
+        }
+
+        // Auto-layout algorithm
+        function autoLayout() {
+            if (nodes.length === 0) return;
+            
+            const startNode = nodes.find(n => n.type === 'story' && n.id === 'node_1') || nodes[0];
+            const visited = new Set();
+            const levels = new Map();
+            
+            // BFS to assign levels
+            const queue = [{ node: startNode, level: 0 }];
+            levels.set(startNode.id, 0);
+            visited.add(startNode.id);
+            
+            while (queue.length > 0) {
+                const { node, level } = queue.shift();
+                
+                node.connections.forEach(connId => {
+                    const targetNode = nodes.find(n => n.id === connId);
+                    if (targetNode && !visited.has(targetNode.id)) {
+                        levels.set(targetNode.id, level + 1);
+                        visited.add(targetNode.id);
+                        queue.push({ node: targetNode, level: level + 1 });
+                    }
+                });
+            }
+            
+            // Position nodes by level
+            const levelNodes = new Map();
+            nodes.forEach(node => {
+                const level = levels.get(node.id) || 0;
+                if (!levelNodes.has(level)) levelNodes.set(level, []);
+                levelNodes.get(level).push(node);
+            });
+            
+            levelNodes.forEach((nodesInLevel, level) => {
+                const spacing = 300;
+                const startY = 100;
+                const levelX = 150 + level * 350;
+                
+                nodesInLevel.forEach((node, index) => {
+                    node.x = levelX;
+                    node.y = startY + index * spacing;
+                    
+                    const element = document.getElementById(node.id);
+                    if (element) {
+                        element.style.left = `${node.x}px`;
+                        element.style.top = `${node.y}px`;
+                        element.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                        
+                        setTimeout(() => {
+                            element.style.transition = '';
+                        }, 500);
+                    }
+                });
+            });
+            
+            setTimeout(() => {
+                renderConnections();
+            }, 100);
+            
+            showToast('Layout optimized! ✨');
+        }
+
+        // View management
+        function centerView() {
+            if (nodes.length === 0) return;
+            
+            const bounds = {
+                minX: Math.min(...nodes.map(n => n.x)),
+                maxX: Math.max(...nodes.map(n => n.x)),
+                minY: Math.min(...nodes.map(n => n.y)),
+                maxY: Math.max(...nodes.map(n => n.y))
+            };
+            
+            const centerX = (bounds.minX + bounds.maxX) / 2;
+            const centerY = (bounds.minY + bounds.maxY) / 2;
+            
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+            
+            canvasOffset.x = rect.width / 2 - centerX;
+            canvasOffset.y = rect.height / 2 - centerY;
+            
+            updateCanvasTransform();
+        }
+
+        // Search functionality
+        function searchNodes() {
+            const searchTerm = document.getElementById('searchNodes').value.toLowerCase();
+            
+            nodes.forEach(node => {
+                const element = document.getElementById(node.id);
+                const matches = node.content.toLowerCase().includes(searchTerm) ||
+                              node.type.toLowerCase().includes(searchTerm) ||
+                              node.id.toLowerCase().includes(searchTerm);
+                
+                if (element) {
+                    element.style.opacity = !searchTerm || matches ? '1' : '0.3';
+                    if (matches && searchTerm) {
+                        element.style.border = '2px solid #FFD700';
+                    } else {
+                        element.style.border = '';
+                    }
+                }
+            });
+        }
+
+        // Statistics and progress tracking
+        function updateStats() {
+            document.getElementById('nodeCount').textContent = `${nodes.length} Nodes`;
+            document.getElementById('connectionCount').textContent = `${connections.length} Connections`;
+            
+            const completedNodes = nodes.filter(n => 
+                n.content && n.content !== getDefaultContent(n.type)
+            ).length;
+            const completionRate = nodes.length > 0 ? Math.round((completedNodes / nodes.length) * 100) : 0;
+            document.getElementById('completionRate').textContent = `${completionRate}% Complete`;
+        }
+
+        function updateProgressBar() {
+            const completedNodes = nodes.filter(n => 
+                n.content && n.content !== getDefaultContent(n.type)
+            ).length;
+            const progress = nodes.length > 0 ? (completedNodes / nodes.length) * 100 : 0;
+            document.querySelector('.progress-fill').style.width = `${progress}%`;
+        }
+
+        // Export functionality
+        function exportJSON() {
+            const exportData = {
+                metadata: {
+                    title: 'Interactive Story',
+                    version: '1.0',
+                    created: new Date().toISOString(),
+                    nodeCount: nodes.length,
+                    connectionCount: connections.length
+                },
+                nodes: nodes.map(node => ({
+                    id: node.id,
+                    type: node.type,
+                    position: { x: node.x, y: node.y },
+                    content: node.content,
+                    choices: node.choices || [],
+                    connections: node.connections
+                })),
+                connections: connections
+            };
+            
+            document.getElementById('jsonOutput').textContent = JSON.stringify(exportData, null, 2);
+            showModal('exportModal');
+        }
+
+        function downloadJSON() {
+            const jsonData = document.getElementById('jsonOutput').textContent;
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `story-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Story exported successfully! 📁');
+            closeModal('exportModal');
+        }
+
+        function copyToClipboard() {
+            const jsonData = document.getElementById('jsonOutput').textContent;
+            navigator.clipboard.writeText(jsonData).then(() => {
+                showToast('Copied to clipboard! 📋');
+            });
+        }
+
+        // Import functionality
+        function importJSON() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Clear existing content
+                    clearCanvas();
+                    
+                    // Import nodes
+                    if (data.nodes) {
+                        nodeIdCounter = 1;
+                        data.nodes.forEach(nodeData => {
+                            const node = {
+                                id: nodeData.id,
+                                type: nodeData.type,
+                                x: nodeData.position.x,
+                                y: nodeData.position.y,
+                                content: nodeData.content,
+                                choices: nodeData.choices || [],
+                                connections: nodeData.connections || []
+                            };
+                            
+                            nodes.push(node);
+                            renderNode(node);
+                            
+                            // Update counter
+                            const idNum = parseInt(node.id.split('_')[1]);
+                            if (idNum >= nodeIdCounter) nodeIdCounter = idNum + 1;
+                        });
+                    }
+                    
+                    // Import connections
+                    if (data.connections) {
+                        connections = [...data.connections];
+                        connectionIdCounter = Math.max(...connections.map(c => 
+                            parseInt(c.id.split('_')[1])
+                        ), 0) + 1;
+                        renderConnections();
+                    }
+                    
+                    updateStats();
+                    showToast('Story imported successfully! 🎉');
+                    
+                } catch (error) {
+                    showToast('Error importing file. Please check the format.', 'error');
+                    console.error('Import error:', error);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // Story validation
+        function validateStory() {
+            const issues = [];
+            
+            // Check for start node
+            const startNodes = nodes.filter(n => n.type === 'story' && n.id === 'node_1');
+            if (startNodes.length === 0) {
+                issues.push('No start node found');
+            }
+            
+            // Check for end nodes
+            const endNodes = nodes.filter(n => n.type === 'end');
+            if (endNodes.length === 0) {
+                issues.push('No ending nodes found');
+            }
+            
+            // Check for orphaned nodes
+            const connectedNodes = new Set();
+            connections.forEach(conn => {
+                connectedNodes.add(conn.from);
+                connectedNodes.add(conn.to);
+            });
+            
+            const orphanedNodes = nodes.filter(n => 
+                n.id !== 'node_1' && !connectedNodes.has(n.id)
+            );
+            
+            if (orphanedNodes.length > 0) {
+                issues.push(`${orphanedNodes.length} orphaned nodes found`);
+            }
+            
+            // Check for empty content
+            const emptyNodes = nodes.filter(n => 
+                !n.content || n.content === getDefaultContent(n.type)
+            );
+            
+            if (emptyNodes.length > 0) {
+                issues.push(`${emptyNodes.length} nodes have default content`);
+            }
+            
+            if (issues.length === 0) {
+                showToast('Story validation passed! ✅', 'success');
+            } else {
+                showToast(`Validation issues: ${issues.join(', ')}`, 'warning');
+            }
+        }
+
+        // Story preview system
+        function showPreview() {
+            const startNode = nodes.find(n => n.type === 'story' && n.id === 'node_1') || nodes[0];
+            if (!startNode) {
+                showToast('No start node found for preview', 'error');
+                return;
+            }
+            
+            const previewContent = generatePreviewHTML(startNode);
+            document.getElementById('previewContent').innerHTML = previewContent;
+            showModal('previewModal');
+        }
+
+        function generatePreviewHTML(currentNode, visitedNodes = new Set()) {
+            if (visitedNodes.has(currentNode.id)) {
+                return '<p><em>Circular reference detected</em></p>';
+            }
+            
+            visitedNodes.add(currentNode.id);
+            
+            let html = `
+                <div class="preview-node" style="margin-bottom: 20px; padding: 20px; border-radius: 12px; background: rgba(102, 126, 234, 0.1);">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 10px;">${currentNode.type.toUpperCase()} - ${currentNode.id}</div>
+                    <div style="font-size: 16px; line-height: 1.6; margin-bottom: 15px;">${currentNode.content}</div>
+            `;
+            
+            if (currentNode.type === 'choice' && currentNode.choices.length > 0) {
+                html += '<div style="margin-top: 15px;"><strong>Choices:</strong><ul style="margin-top: 10px;">';
+                
+                currentNode.choices.forEach((choice, index) => {
+                    const connectedNodeId = currentNode.connections[index];
+                    const connectedNode = nodes.find(n => n.id === connectedNodeId);
+                    
+                    html += `<li style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px;">
+                        <strong>${choice}</strong>`;
+                    
+                    if (connectedNode && !visitedNodes.has(connectedNode.id)) {
+                        html += `<div style="margin-top: 10px; margin-left: 20px; border-left: 2px solid #ddd; padding-left: 15px;">
+                            ${generatePreviewHTML(connectedNode, new Set(visitedNodes))}
+                        </div>`;
+                    } else if (connectedNode) {
+                        html += `<div style="margin-top: 5px; color: #666; font-style: italic;">→ Continues to ${connectedNode.id}</div>`;
+                    } else {
+                        html += `<div style="margin-top: 5px; color: #ff5722; font-style: italic;">→ No connection</div>`;
+                    }
+                    
+                    html += '</li>';
+                });
+                
+                html += '</ul></div>';
+            } else if (currentNode.connections.length > 0) {
+                const nextNode = nodes.find(n => n.id === currentNode.connections[0]);
+                if (nextNode && !visitedNodes.has(nextNode.id)) {
+                    html += `<div style="margin-top: 20px; border-left: 3px solid #667eea; padding-left: 15px;">
+                        ${generatePreviewHTML(nextNode, new Set(visitedNodes))}
+                    </div>`;
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        // Utility functions
+        function clearCanvas() {
+            nodes.forEach(node => {
+                const element = document.getElementById(node.id);
+                if (element) element.remove();
+            });
+            
+            nodes = [];
+            connections = [];
+            selectedNode = null;
+            nodeIdCounter = 1;
+            connectionIdCounter = 1;
+            
+            document.getElementById('connectionsSvg').innerHTML = '';
+            updateStats();
+            updateProgressBar();
+        }
+
+        function saveProject() {
+            const projectData = {
+                nodes,
+                connections,
+                canvasOffset,
+                zoomLevel,
+                timestamp: new Date().toISOString()
+            };
+            
+            // In a real app, this would save to a backend
+            console.log('Project saved:', projectData);
+            showToast('Project saved locally! 💾');
+        }
+
+        // Modal management
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function showHelp() {
+            showModal('helpModal');
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Keyboard shortcuts
+        function handleKeyDown(e) {
+            if (e.key === 'Delete' && selectedNode) {
+                // Delete selected node
+                const nodeIndex = nodes.findIndex(n => n.id === selectedNode);
+                if (nodeIndex !== -1) {
+                    // Remove connections
+                    connections = connections.filter(c => 
+                        c.from !== selectedNode && c.to !== selectedNode
+                    );
+                    
+                    // Remove from other nodes' connections
+                    nodes.forEach(node => {
+                        node.connections = node.connections.filter(id => id !== selectedNode);
+                    });
+                    
+                    // Remove node element
+                    const element = document.getElementById(selectedNode);
+                    if (element) element.remove();
+                    
+                    // Remove from nodes array
+                    nodes.splice(nodeIndex, 1);
+                    
+                    selectedNode = null;
+                    renderConnections();
+                    updateStats();
+                    showToast('Node deleted');
+                }
+            } else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveProject();
+            }
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+
+        // Initialize the application when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
